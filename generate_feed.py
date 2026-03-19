@@ -3,6 +3,7 @@
 # Simple RSS generator for Fluent Reader. Add sites to SITES list.
 
 import re
+from dateutil import parser as dateparser   # add python-dateutil to requirements.txt
 import json
 import os
 import hashlib
@@ -45,6 +46,37 @@ HEADERS = {"User-Agent": USER_AGENT}
 CHAPTER_HREF_RE = re.compile(r"/chapters/(\d+)", re.IGNORECASE)
 CHAPTER_NUM_RE = re.compile(r"chapter[-\s]?(\d+)", re.IGNORECASE)
 
+def parse_chap_num(text):
+    """
+    Return a numeric chapter value for sorting (float), or -1.0 if none found.
+    Handles integers and decimals like "12" or "12.5".
+    """
+    m = re.search(r'(\d+(?:\.\d+)?)', text)
+    return float(m.group(1)) if m else -1.0
+
+
+def extract_thumbnail(page_url):
+    r = requests.get(page_url, timeout=15)
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    # 1) prefer og:image
+    og = soup.find("meta", property="og:image")
+    if og and og.get("content"):
+        return urljoin(page_url, og["content"].strip())
+
+    # 2) link rel=image_src
+    link_img = soup.find("link", rel="image_src")
+    if link_img and link_img.get("href"):
+        return urljoin(page_url, link_img["href"].strip())
+
+    # 3) check img tags for data-src/data-original/src
+    for img in soup.find_all("img"):
+        for attr in ("data-src", "data-original", "src"):
+            val = img.get(attr)
+            if val and val.strip() and "placeholder" not in val:
+                return urljoin(page_url, val.strip())
+
+    return None
 def now_rfc2822():
     return format_datetime(datetime.now(timezone.utc))
 
@@ -69,6 +101,9 @@ def http_get(url, timeout=20):
     r.raise_for_status()
     return r.text
 
+def normalize_url(u):
+    return u.rstrip('/')
+
 def find_latest_chapter(page_url):
     html = http_get(page_url)
     soup = BeautifulSoup(html, "html.parser")
@@ -84,30 +119,52 @@ def find_latest_chapter(page_url):
                 re.search(r"chapter|chap|ch\b", text, re.IGNORECASE)):
             continue
 
-        # Try to extract the chapter number from the URL first
-        m = re.search(r"chapter[-_/.]?(\d+)", full, re.IGNORECASE)
-        if not m:
-            # fallback: look for a numeric path segment like /123/ or -123-
-            m = re.search(r"/(\d{1,5})(?:[/?#]|$)", full)
+        # Try to extract a numeric chapter value (allow decimals)
+        chap_num = None
 
-        chap_num = int(m.group(1)) if m else None
+        # 1) try any numeric sequence in the URL (prefer the last numeric segment)
+        m_url = re.findall(r"(\d+(?:\.\d+)?)", full)
+        if m_url:
+            try:
+                chap_num = float(m_url[-1])
+            except Exception:
+                chap_num = None
 
-        # If still no number, try the link text (e.g., "Chapter 81")
+        # 2) fallback: parse from link text
         if chap_num is None:
-            m2 = re.search(r"chapter[-\s]?(\d+)", text, re.IGNORECASE) or \
-                 re.search(r"\bch(?:apter)?\.?\s*(\d+)\b", text, re.IGNORECASE)
+            pn = parse_chap_num(text)
+            if pn is not None and pn != -1.0:
+                chap_num = pn
+
+        # 3) final fallback: use CHAPTER_HREF_RE or CHAPTER_NUM_RE
+        if chap_num is None or chap_num == -1.0:
+            m2 = CHAPTER_HREF_RE.search(href) or CHAPTER_NUM_RE.search(text)
             if m2:
-                chap_num = int(m2.group(1))
+                try:
+                    chap_num = float(m2.group(1))
+                except Exception:
+                    chap_num = None
 
         if chap_num is None:
             continue
 
-        candidates.append({"url": full, "text": text, "score": chap_num})
+        candidates.append({
+            "url": normalize_url(full),
+            "text": text,
+            "score": chap_num
+        })
 
     if not candidates:
         return None
+
+    # optional debug: print top candidates
+    # candidates_sorted = sorted(candidates, key=lambda x: x['score'], reverse=True)
+    # print("DEBUG candidates:", [(c['score'], c['url']) for c in candidates_sorted[:5]])
+
     best = max(candidates, key=lambda x: x["score"])
     return best
+
+
 
 
 def normalize_item(it):
