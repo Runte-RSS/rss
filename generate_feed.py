@@ -151,7 +151,15 @@ def find_latest_chapter(page_url):
 
         if chap_num is None:
             continue
-
+    
+        # require that the candidate URL contains the manga id or slug from page_url
+        from urllib.parse import urlparse
+        expected = urlparse(page_url).path.split('/')[-1]  # e.g. "50583-i-played-the-role..."
+        if expected and expected not in full:
+            # allow if the anchor text explicitly mentions the title
+            if expected.split('-')[1] not in text.lower():
+                continue
+        
         candidates.append({
             "url": normalize_url(full),
             "text": text,
@@ -160,6 +168,8 @@ def find_latest_chapter(page_url):
 
     if not candidates:
         return None
+    
+    
 
     # optional debug: print top candidates
     # candidates_sorted = sorted(candidates, key=lambda x: x['score'], reverse=True)
