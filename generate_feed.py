@@ -33,6 +33,10 @@ SITES = [
         "title": "Transmigrating Into The Cyber Game After Being On Top For Killing Boss",
         "url": "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss",
         "image": "https://cdn.anime-planet.com/manga/primary/after-transmigrating-into-the-cyberpunk-game-i-defeated-the-boss-and-successfully-rose-to-the-top-1.webp?t=1759754015",
+    },{
+        "title": "I Played the Role of the Adopted Daughter Too Well",
+        "url": "https://mangamirror.com/manga/50583-i-played-the-role-of-the-adopted-daughter-too-well",
+        "image": "https://www.mangaread.org/wp-content/uploads/2023/09/28-1677642819-193x278.jpg",
     },
     # Example: add more sites below
     # {
