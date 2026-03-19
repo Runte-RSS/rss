@@ -38,6 +38,14 @@ jobs:
             exit 1
           fi
 
+      - name: Debug Python environment
+        run: |
+          python -V
+          python -c "import sys, pkgutil; print('dateutil present:', pkgutil.find_loader('dateutil') is not None)"
+          pip --version
+          pip freeze
+
+
       - name: Cache pip
         uses: actions/cache@v4
         with:
