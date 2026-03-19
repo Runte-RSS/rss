@@ -24,6 +24,10 @@ SITES = [
         "title": "One Piece",
         "url": "https://tcbonepiecechapters.com/mangas/5/one-piece",
         "image": "https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png",
+    },{
+        "title": "Shut Up, Evil Dragon! I don’t want to raise a child with you anymore",
+        "url": "https://manhuabuddy.com/manhwa/shut-up-evil-dragon-i-dont-want-to-raise-a-child-with-you-anymore",
+        "image": "https://media.manhuabuddy.com/files/images/thumbs/shut-up-evil-dragon-i-dont-want-to-raise-a-child-with-you-anymore.webp",
     },
     # Example: add more sites below
     # {
