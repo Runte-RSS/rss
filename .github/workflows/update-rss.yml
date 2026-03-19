@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'generate_feed.py'
+      - 'requirements.txt'
       - 'SITES*'
   schedule:
     - cron: '0 * * * *' # hourly; adjust as needed
@@ -29,8 +30,21 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
+          python -m pip install --upgrade pip setuptools wheel
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "No requirements.txt found; skipping dependency install" >&2
+            exit 1
+          fi
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Run feed generator
         run: |
