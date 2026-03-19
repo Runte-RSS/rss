@@ -69,24 +69,42 @@ def find_latest_chapter(page_url):
     html = http_get(page_url)
     soup = BeautifulSoup(html, "html.parser")
     candidates = []
+
     for a in soup.find_all("a", href=True):
         href = a["href"].strip()
         full = urljoin(page_url, href)
-        if "/chapters/" not in full:
-            continue
         text = a.get_text(" ", strip=True) or ""
-        m_id = CHAPTER_HREF_RE.search(full)
-        chap_id = int(m_id.group(1)) if m_id else None
-        m_num = CHAPTER_NUM_RE.search(full) or CHAPTER_NUM_RE.search(text)
-        chap_num = int(m_num.group(1)) if m_num else None
-        score = chap_id if chap_id is not None else chap_num
-        if score is None:
+
+        # Only consider links that look like chapter links
+        if not (re.search(r"chapter|chap|ch\b|/read/|/manga/", full, re.IGNORECASE) or
+                re.search(r"chapter|chap|ch\b", text, re.IGNORECASE)):
             continue
-        candidates.append({"url": full, "text": text, "score": score})
+
+        # Try to extract the chapter number from the URL first
+        m = re.search(r"chapter[-_/.]?(\d+)", full, re.IGNORECASE)
+        if not m:
+            # fallback: look for a numeric path segment like /123/ or -123-
+            m = re.search(r"/(\d{1,5})(?:[/?#]|$)", full)
+
+        chap_num = int(m.group(1)) if m else None
+
+        # If still no number, try the link text (e.g., "Chapter 81")
+        if chap_num is None:
+            m2 = re.search(r"chapter[-\s]?(\d+)", text, re.IGNORECASE) or \
+                 re.search(r"\bch(?:apter)?\.?\s*(\d+)\b", text, re.IGNORECASE)
+            if m2:
+                chap_num = int(m2.group(1))
+
+        if chap_num is None:
+            continue
+
+        candidates.append({"url": full, "text": text, "score": chap_num})
+
     if not candidates:
         return None
     best = max(candidates, key=lambda x: x["score"])
     return best
+
 
 def normalize_item(it):
     now = now_rfc2822()
