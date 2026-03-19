@@ -31,7 +31,7 @@ SITES = [
     },{
         "title": "Transmigrating Into The Cyber Game After Being On Top For Killing Boss",
         "url": "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss",
-        "image": "https://res.mbbcdn.com/thumb/transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss.png",
+        "image": "https://cdn.anime-planet.com/manga/primary/after-transmigrating-into-the-cyberpunk-game-i-defeated-the-boss-and-successfully-rose-to-the-top-1.webp?t=1759754015",
     },
     # Example: add more sites below
     # {
