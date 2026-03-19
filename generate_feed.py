@@ -28,6 +28,10 @@ SITES = [
         "title": "Shut Up, Evil Dragon! I don’t want to raise a child with you anymore",
         "url": "https://manhuabuddy.com/manhwa/shut-up-evil-dragon-i-dont-want-to-raise-a-child-with-you-anymore",
         "image": "https://media.manhuabuddy.com/files/images/thumbs/shut-up-evil-dragon-i-dont-want-to-raise-a-child-with-you-anymore.webp",
+    },{
+        "title": "Transmigrating Into The Cyber Game After Being On Top For Killing Boss",
+        "url": "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss",
+        "image": "https://res.mbbcdn.com/thumb/transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss.png",
     },
     # Example: add more sites below
     # {
