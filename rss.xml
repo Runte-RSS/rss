@@ -4,7 +4,11 @@
     <title>My Manga Watchlist</title>
     <link>https://example.com/</link>
     <description>Auto-generated manga feed for Fluent Reader</description>
+<<<<<<< HEAD
     <lastBuildDate>Thu, 19 Mar 2026 23:05:00 +0000</lastBuildDate>
+=======
+    <lastBuildDate>Thu, 19 Mar 2026 23:01:01 +0000</lastBuildDate>
+>>>>>>> ee8e2ce032b335a8f1c6c24e54ec4daa4b2df972
     <item>
       <title>I Played the Role of the Adopted Daughter Too Well — new chapter</title>
       <link>https://mangamirror.com/manga/130980-you-are-my-world</link>
