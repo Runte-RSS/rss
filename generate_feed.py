@@ -37,6 +37,10 @@ SITES = [
         "title": "I Played the Role of the Adopted Daughter Too Well",
         "url": "https://mangamirror.com/manga/50583-i-played-the-role-of-the-adopted-daughter-too-well",
         "image": "https://www.mangaread.org/wp-content/uploads/2023/09/28-1677642819-193x278.jpg",
+    },{
+        "title": "The Fox-Eyed Villain of the Demon Academy",
+        "url": "https://mangamirror.com/manga/127739-the-fox-eyed-villain-of-the-demon-academy",
+        "image": "https://static.asurascans.my/book/f47aadb5-8bff-4ba1-bece-66f0ec681c24/cover/b54fe4a9-a71f-400c-929a-2b1ef9b4c7dd.webp?width=400&type=webp",
     },
     # Example: add more sites below
     # {
