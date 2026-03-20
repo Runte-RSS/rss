@@ -110,29 +110,43 @@ def normalize_url(u):
 
 from urllib.parse import urlparse, urljoin
 
+ID_RE = re.compile(r"/manga/(\d+)[-/]?", re.IGNORECASE)
+
 def find_latest_chapter(page_url, title=None):
-    html = http_get(page_url)
-    soup = BeautifulSoup(html, "html.parser")
+    # fetch page and follow redirects so we use canonical URL
+    try:
+        rpage = requests.get(page_url, headers=HEADERS, timeout=15)
+        rpage.raise_for_status()
+        page_html = rpage.text
+        canonical_page_url = normalize_url(rpage.url)
+    except Exception:
+        # fallback to original if fetch fails
+        page_html = http_get(page_url)
+        canonical_page_url = normalize_url(page_url)
+
+    soup = BeautifulSoup(page_html, "html.parser")
     candidates = []
 
-    expected_slug = urlparse(page_url).path.strip('/').split('/')[-1]
+    # extract numeric id from canonical page URL
+    m_id = ID_RE.search(canonical_page_url)
+    expected_id = m_id.group(1) if m_id else None
 
     for a in soup.find_all("a", href=True):
         href = a["href"].strip()
-        full = urljoin(page_url, href)
+        full = urljoin(canonical_page_url, href)
         text = a.get_text(" ", strip=True) or ""
 
-        # Only consider links that look like chapter links
+        # quick filter for likely chapter links
         if not (re.search(r"chapter|chap|ch\b|/read/|/manga/", full, re.IGNORECASE) or
                 re.search(r"chapter|chap|ch\b", text, re.IGNORECASE)):
             continue
 
-        # Try to extract a numeric chapter value (allow decimals)
+        # extract numeric chapter value
         chap_num = None
-        m_url = re.findall(r"(\d+(?:\.\d+)?)", full)
-        if m_url:
+        m_url_nums = re.findall(r"(\d+(?:\.\d+)?)", full)
+        if m_url_nums:
             try:
-                chap_num = float(m_url[-1])
+                chap_num = float(m_url_nums[-1])
             except Exception:
                 chap_num = None
 
@@ -152,13 +166,14 @@ def find_latest_chapter(page_url, title=None):
         if chap_num is None:
             continue
 
-        # Filter out links that clearly point to other manga pages
-        if expected_slug and expected_slug not in full:
+        # Strict ID check: require the page's numeric manga id to appear in candidate URL
+        if expected_id and expected_id not in full:
+            # allow only if anchor text clearly mentions the title (first 3 words)
             title_words = [w.lower() for w in (title or "").split()[:3]]
             if not any(w for w in title_words if w and w in text.lower()):
                 continue
 
-        # Boost links whose anchor text contains the manga title words
+        # small boost if anchor text contains title words
         boost = 0.1 if title and any(w.lower() in text.lower() for w in title.split()[:3]) else 0.0
 
         candidates.append({
@@ -172,7 +187,7 @@ def find_latest_chapter(page_url, title=None):
 
     best = max(candidates, key=lambda x: x["score"])
 
-    # Follow redirects and normalize final URL
+    # follow redirects for the chosen chapter URL and normalize
     try:
         r = requests.get(best["url"], headers=HEADERS, timeout=10)
         final_url = normalize_url(r.url)
@@ -183,8 +198,6 @@ def find_latest_chapter(page_url, title=None):
     return best
 
     
-    
-
     # optional debug: print top candidates
     # candidates_sorted = sorted(candidates, key=lambda x: x['score'], reverse=True)
     # print("DEBUG candidates:", [(c['score'], c['url']) for c in candidates_sorted[:5]])
