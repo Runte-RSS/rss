@@ -53,6 +53,14 @@ SITES = [
         "title": "Black Killer Whale Baby",
         "url": "https://mangamirror.com/manga/119653-black-killer-whale-baby",
         "image": "https://cdn.novelupdates.com/images/2023/06/Black-Killer-Whale-Baby.jpg",
+    },{
+        "title": "Don't Expect Me to Take Responsibility",
+        "url": "https://mangamirror.com/manga/132868-dont-expect-me-to-take-responsibility",
+        "image": "https://roliascan.com/wp-content/uploads/2026/03/D4wkGK-s.jpg",
+    },{
+        "title": "Isn’t Being A Wicked Woman Much Better?",
+        "url": "https://mangamirror.com/manga/47691-isnt-being-a-wicked-woman-much-better",
+        "image": "https://images.saymedia-content.com/.image/c_limit%2Ccs_srgb%2Cq_auto:eco%2Cw_700/MTk3MDU2Mzc2ODY5NDMwNTkx/the-best-villainess-manhwa-webtoons-you-must-binge-read.webp",
     },
     # Example: add more sites below
     # {
