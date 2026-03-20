@@ -194,39 +194,27 @@ def find_latest_chapter(page_url, title=None, debug=False):
             except Exception:
                 chap_num = None
 
-        # fallback: prefer numbers after chapter/chap in the anchor text
-        if chap_num is None:
-            m_text = re.search(r"(?:chapter|chap)[^\d]{0,6}(\d+(?:\.\d+)?)", text, re.IGNORECASE)
-            if m_text:
-                try:
-                    chap_num = float(m_text.group(1))
-                except Exception:
-                    chap_num = None
-
-        # fallback: use the last remaining numeric token from the URL (if any)
-        if chap_num is None and url_nums:
+                # --- reject obviously bogus chapter numbers (timestamps / huge IDs) ---
+        if chap_num is not None:
             try:
-                chap_num = float(url_nums[-1])
+                # treat as integer for threshold checks
+                n = int(float(chap_num))
             except Exception:
-                chap_num = None
+                n = None
 
-        # final fallback: parse any numeric in the anchor text
-        if chap_num is None:
-            pn = parse_chap_num(text)
-            if pn is not None and pn != -1.0:
-                chap_num = pn
-
-        # final fallback using existing regexes
-        if chap_num is None or chap_num == -1.0:
-            m2 = CHAPTER_HREF_RE.search(href) or CHAPTER_NUM_RE.search(text)
-            if m2:
-                try:
-                    chap_num = float(m2.group(1))
-                except Exception:
+            # ignore year-like, epoch-like, or otherwise absurdly large numbers
+            if n is not None:
+                if 1900 <= n <= 2100:
+                    # a year alone is not a chapter number (unless you want to allow it)
+                    chap_num = None
+                elif n >= 1_000_000:   # epoch-like or huge ID
+                    chap_num = None
+                elif n >= 100_000:     # very large, unlikely to be a real chapter
                     chap_num = None
 
         if chap_num is None:
             continue
+
 
         # --- end improved extraction ---
 
