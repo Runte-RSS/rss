@@ -41,6 +41,14 @@ SITES = [
         "title": "The Fox-Eyed Villain of the Demon Academy",
         "url": "https://mangamirror.com/manga/127739-the-fox-eyed-villain-of-the-demon-academy",
         "image": "https://static.asurascans.my/book/f47aadb5-8bff-4ba1-bece-66f0ec681c24/cover/b54fe4a9-a71f-400c-929a-2b1ef9b4c7dd.webp?width=400&type=webp",
+    },{
+        "title": "Revenge Of The Sword Clan's Hound",
+        "url": "https://mangamirror.com/manga/59511-revenge-of-the-sword-clans-hound",
+        "image": "https://bulbasaur.poke-black-and-white.net/covers/6851547b702284f834178357/cover_1752077533539.webp",
+    },{
+        "title": "The Billionaire’s Replacement Wife",
+        "url": "https://mangamirror.com/manga/95801-the-billionaires-replacement-wife",
+        "image": "https://webtoon-phinf.pstatic.net/20231009_19/1696856944405OUgnO_JPEG/d47dce19-58d1-4b1c-92af-871ce2c2d0e14644837279726188462.jpg",
     },
     # Example: add more sites below
     # {
