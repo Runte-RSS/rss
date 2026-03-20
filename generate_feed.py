@@ -49,6 +49,10 @@ SITES = [
         "title": "The Billionaire’s Replacement Wife",
         "url": "https://mangamirror.com/manga/95801-the-billionaires-replacement-wife",
         "image": "https://us-a.tapas.io/sa/76/2546a686-8b25-4e18-bdb5-2306567d34da.jpg",
+    },{
+        "title": "Black Killer Whale Baby",
+        "url": "https://mangamirror.com/manga/119653-black-killer-whale-baby",
+        "image": "https://cdn.novelupdates.com/images/2023/06/Black-Killer-Whale-Baby.jpg",
     },
     # Example: add more sites below
     # {
