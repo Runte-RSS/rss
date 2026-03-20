@@ -48,7 +48,7 @@ SITES = [
     },{
         "title": "The Billionaire’s Replacement Wife",
         "url": "https://mangamirror.com/manga/95801-the-billionaires-replacement-wife",
-        "image": "https://mangadex.org/covers/423dc761-2b2d-4d47-80d8-1ec67c6b1c5f/41ea5baa-00e6-4fdf-b976-b3ad148c55ed.jpg",
+        "image": "https://us-a.tapas.io/sa/76/2546a686-8b25-4e18-bdb5-2306567d34da.jpg",
     },
     # Example: add more sites below
     # {
