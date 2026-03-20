@@ -56,7 +56,7 @@ SITES = [
     },{
         "title": "Don't Expect Me to Take Responsibility",
         "url": "https://mangamirror.com/manga/132868-dont-expect-me-to-take-responsibility",
-        "image": "https://fairyscans.com/wp-content/uploads/2026/01/resource-1.webp",
+        "image": "https://puu.sh/KKikc.png",
     },
     # Example: add more sites below
     # {
