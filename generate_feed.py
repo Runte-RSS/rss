@@ -137,32 +137,56 @@ def find_latest_chapter(page_url, title=None, debug=False):
 
                 # quick filter for likely chapter links
         # allow if URL or text contains explicit chapter/read markers
+                # quick filter for likely chapter links
         is_chapter_url = bool(re.search(r"(?:/chapter/|/read/|/c/|chapter-|chap-|\bchapter\b|\bchap\b|\bch\b|/page/)", full, re.IGNORECASE))
         is_chapter_text = bool(re.search(r"(?:chapter|chap|ch)\s*\d", text, re.IGNORECASE))
 
-        # detect plain manga page links like /manga/12345-slug
-        is_manga_page = bool(re.search(r"/manga/\d+(?:[/-]|$)", full, re.IGNORECASE))
+        # detect plain listing pages like /manga/slug or /manhwa/slug-2025 (not chapter pages)
+        is_listing_page = bool(re.search(r"/(?:manga|manhwa|manhua)/[^/]+(?:$|/|[-]\d{4}(?:$|/))", full, re.IGNORECASE))
 
-        # If it's a plain manga page and not explicitly a chapter link by URL or text, skip it
-        if is_manga_page and not (is_chapter_url or is_chapter_text):
+        # If it's a plain listing page and not explicitly a chapter link by URL or text, skip it
+        if is_listing_page and not (is_chapter_url or is_chapter_text):
             continue
 
-        # If it is neither a chapter-like URL nor chapter-like text, skip it
+        # If it is neither a chapter-like URL nor chapter-like text nor contains any digit, skip it
         if not (is_chapter_url or is_chapter_text or re.search(r"\d", full)):
             continue
 
 
+
                 # --- improved chapter number extraction ---
+                # improved chapter number extraction
         chap_num = None
 
         # all numeric tokens in the URL (in order)
+                # all numeric tokens in the URL (in order)
         url_nums = re.findall(r"(\d+(?:\.\d+)?)", full)
 
-        # remove tokens that equal the manga id (expected_id) so we don't pick the manga id
-        if expected_id:
-            url_nums = [n for n in url_nums if n != expected_id]
+        # helper tests
+        def is_year_token(n):
+            try:
+                v = int(float(n))
+                return 1900 <= v <= 2100
+            except Exception:
+                return False
 
-        # 1) prefer numbers that appear after chapter/chap/read/page in the URL
+        def is_timestamp_token(n):
+            try:
+                v = int(float(n))
+                return v >= 1_000_000_000  # 10-digit epoch-like numbers
+            except Exception:
+                return False
+
+        # drop year-like, epoch-like, and very large tokens
+        url_nums = [
+            n for n in url_nums
+            if not is_year_token(n)
+            and not is_timestamp_token(n)
+            and (len(n) < 7 and int(float(n)) < 1_000_000)
+        ]
+
+
+        # prefer numbers that appear after chapter/chap/read/page in the URL
         m_after = re.search(r"(?:chapter|chap|read|page)[^0-9]{0,6}(\d+(?:\.\d+)?)", full, re.IGNORECASE)
         if m_after:
             try:
@@ -170,7 +194,7 @@ def find_latest_chapter(page_url, title=None, debug=False):
             except Exception:
                 chap_num = None
 
-        # 2) fallback: prefer numbers that appear after chapter/chap in the anchor text
+        # fallback: prefer numbers after chapter/chap in the anchor text
         if chap_num is None:
             m_text = re.search(r"(?:chapter|chap)[^\d]{0,6}(\d+(?:\.\d+)?)", text, re.IGNORECASE)
             if m_text:
@@ -179,20 +203,20 @@ def find_latest_chapter(page_url, title=None, debug=False):
                 except Exception:
                     chap_num = None
 
-        # 3) fallback: use the last remaining numeric token from the URL (if any)
+        # fallback: use the last remaining numeric token from the URL (if any)
         if chap_num is None and url_nums:
             try:
                 chap_num = float(url_nums[-1])
             except Exception:
                 chap_num = None
 
-        # 4) final fallback: parse any numeric in the anchor text
+        # final fallback: parse any numeric in the anchor text
         if chap_num is None:
             pn = parse_chap_num(text)
             if pn is not None and pn != -1.0:
                 chap_num = pn
 
-        # 5) final fallback using your existing regexes
+        # final fallback using existing regexes
         if chap_num is None or chap_num == -1.0:
             m2 = CHAPTER_HREF_RE.search(href) or CHAPTER_NUM_RE.search(text)
             if m2:
@@ -203,6 +227,7 @@ def find_latest_chapter(page_url, title=None, debug=False):
 
         if chap_num is None:
             continue
+
         # --- end improved extraction ---
 
 
