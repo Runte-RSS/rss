@@ -108,10 +108,14 @@ def http_get(url, timeout=20):
 def normalize_url(u):
     return u.rstrip('/')
 
-def find_latest_chapter(page_url):
+from urllib.parse import urlparse, urljoin
+
+def find_latest_chapter(page_url, title=None):
     html = http_get(page_url)
     soup = BeautifulSoup(html, "html.parser")
     candidates = []
+
+    expected_slug = urlparse(page_url).path.strip('/').split('/')[-1]
 
     for a in soup.find_all("a", href=True):
         href = a["href"].strip()
@@ -125,8 +129,6 @@ def find_latest_chapter(page_url):
 
         # Try to extract a numeric chapter value (allow decimals)
         chap_num = None
-
-        # 1) try any numeric sequence in the URL (prefer the last numeric segment)
         m_url = re.findall(r"(\d+(?:\.\d+)?)", full)
         if m_url:
             try:
@@ -134,13 +136,11 @@ def find_latest_chapter(page_url):
             except Exception:
                 chap_num = None
 
-        # 2) fallback: parse from link text
         if chap_num is None:
             pn = parse_chap_num(text)
             if pn is not None and pn != -1.0:
                 chap_num = pn
 
-        # 3) final fallback: use CHAPTER_HREF_RE or CHAPTER_NUM_RE
         if chap_num is None or chap_num == -1.0:
             m2 = CHAPTER_HREF_RE.search(href) or CHAPTER_NUM_RE.search(text)
             if m2:
@@ -151,23 +151,37 @@ def find_latest_chapter(page_url):
 
         if chap_num is None:
             continue
-    
-        # require that the candidate URL contains the manga id or slug from page_url
-        from urllib.parse import urlparse
-        expected = urlparse(page_url).path.split('/')[-1]  # e.g. "50583-i-played-the-role..."
-        if expected and expected not in full:
-            # allow if the anchor text explicitly mentions the title
-            if expected.split('-')[1] not in text.lower():
+
+        # Filter out links that clearly point to other manga pages
+        if expected_slug and expected_slug not in full:
+            title_words = [w.lower() for w in (title or "").split()[:3]]
+            if not any(w for w in title_words if w and w in text.lower()):
                 continue
-        
+
+        # Boost links whose anchor text contains the manga title words
+        boost = 0.1 if title and any(w.lower() in text.lower() for w in title.split()[:3]) else 0.0
+
         candidates.append({
             "url": normalize_url(full),
             "text": text,
-            "score": chap_num
+            "score": chap_num + boost
         })
 
     if not candidates:
         return None
+
+    best = max(candidates, key=lambda x: x["score"])
+
+    # Follow redirects and normalize final URL
+    try:
+        r = requests.get(best["url"], headers=HEADERS, timeout=10)
+        final_url = normalize_url(r.url)
+    except Exception:
+        final_url = normalize_url(best["url"])
+
+    best["url"] = final_url
+    return best
+
     
     
 
@@ -231,7 +245,7 @@ def main():
         thumb = site.get("image", "")
         print(f"Checking {title} -> {page}")
         try:
-            latest = find_latest_chapter(page)
+            latest = find_latest_chapter(page, title)
         except Exception as e:
             print("  Error scraping:", e)
             latest = None
