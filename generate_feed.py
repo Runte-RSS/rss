@@ -3,7 +3,7 @@
 # Simple RSS generator for Fluent Reader. Add sites to SITES list.
 
 import re
-from dateutil import parser as dateparser   # add python-dateutil to requirements.txt
+from dateutil import parser as dateparser
 import json
 import os
 import hashlib
@@ -11,8 +11,14 @@ from datetime import datetime, timezone
 from email.utils import format_datetime
 from urllib.parse import urljoin
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from xml.sax.saxutils import escape
+import cloudscraper
+import time
+import random
+
 
 RSS_FILE = "rss.xml"
 SEEN_FILE = "seen.json"
@@ -65,10 +71,52 @@ SITES = [
     #   "image": "https://example.com/thumb.png",
     # },
 ]
+# --- headers and session (module-level, safe) ---
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://google.com/",
+}
 
-HEADERS = {"User-Agent": USER_AGENT}
-CHAPTER_HREF_RE = re.compile(r"/chapters/(\d+)", re.IGNORECASE)
-CHAPTER_NUM_RE = re.compile(r"chapter[-\s]?(\d+)", re.IGNORECASE)
+session = requests.Session()
+session.headers.update(HEADERS)
+
+# configure retries (safe defaults)
+retries = Retry(
+    total=3,
+    backoff_factor=1,
+    status_forcelist=[429, 500, 502, 503, 504],
+    allowed_methods=["HEAD", "GET", "OPTIONS"]
+)
+session.mount("https://", HTTPAdapter(max_retries=retries))
+session.mount("http://", HTTPAdapter(max_retries=retries))
+
+# --- helper fetch function (use everywhere instead of session.get directly) ---
+def fetch_url(url, timeout=15, allow_cloudscraper=True, debug=False):
+    # small jitter to avoid bursts from CI
+    time.sleep(random.uniform(0.3, 1.2))
+    try:
+        r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
+        r.raise_for_status()
+        return r
+    except Exception as e:
+        if debug:
+            print("fetch_url: requests failed for", url, "error:", repr(e))
+            if hasattr(e, "response") and e.response is not None:
+                print("Response head:", e.response.status_code, e.response.headers)
+                print(e.response.text[:1000])
+        if allow_cloudscraper:
+            try:
+                scraper = cloudscraper.create_scraper(browser={'custom': HEADERS['User-Agent']})
+                r2 = scraper.get(url, timeout=timeout, allow_redirects=True)
+                r2.raise_for_status()
+                return r2
+            except Exception as e2:
+                if debug:
+                    print("fetch_url: cloudscraper fallback failed for", url, "error:", repr(e2))
+                raise
+        raise
 
 def parse_chap_num(text):
     """
