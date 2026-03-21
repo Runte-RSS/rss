@@ -84,8 +84,8 @@ session.headers.update(HEADERS)
 
 # configure retries (safe defaults)
 retries = Retry(
-    total=3,
-    backoff_factor=1,
+    total=2,
+    backoff_factor=0.5,
     status_forcelist=[429, 500, 502, 503, 504],
     allowed_methods=["HEAD", "GET", "OPTIONS"]
 )
@@ -94,11 +94,9 @@ session.mount("http://", HTTPAdapter(max_retries=retries))
 
 # --- helper fetch function (use everywhere instead of session.get directly) ---
 def fetch_url(url, timeout=15, allow_cloudscraper=True, debug=False):
-    # small jitter to avoid bursts from CI
-    time.sleep(random.uniform(0.3, 1.2))
+    time.sleep(random.uniform(0.05, 0.25))   # tiny jitter
     try:
-        # <-- use session.get here (was incorrectly calling fetch_url recursively)
-        r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
+        r = session.get(url, timeout=timeout, allow_redirects=True)
         r.raise_for_status()
         return r
     except Exception as e:
@@ -120,6 +118,7 @@ def fetch_url(url, timeout=15, allow_cloudscraper=True, debug=False):
         raise
 
 
+
 def parse_chap_num(text):
     """
     Return a numeric chapter value for sorting (float), or -1.0 if none found.
@@ -130,7 +129,7 @@ def parse_chap_num(text):
 
 
 def extract_thumbnail(page_url):
-    r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
+    r = fetch_url(page_url, timeout=15, allow_cloudscraper=True, debug=True)
     soup = BeautifulSoup(r.text, "html.parser")
 
     # 1) prefer og:image
@@ -185,10 +184,12 @@ ID_RE = re.compile(r"/manga/(\d+)[-/]?", re.IGNORECASE)
 def find_latest_chapter(page_url, title=None, debug=False):
     # fetch page and follow redirects so we use canonical URL
     try:
-        r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
+        r = fetch_url(page_url, timeout=15, allow_cloudscraper=True, debug=True)
+       rpage = fetch_url(page_url, timeout=15, allow_cloudscraper=True, debug=debug)
         rpage.raise_for_status()
         page_html = rpage.text
         canonical_page_url = normalize_url(rpage.url)
+
     except Exception:
         page_html = http_get(page_url)
         canonical_page_url = normalize_url(page_url)
@@ -320,21 +321,12 @@ def find_latest_chapter(page_url, title=None, debug=False):
 
     # follow redirects for the chosen chapter URL and normalize
     try:
-        r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
+        r = fetch_url(best["url"], timeout=15, allow_cloudscraper=True, debug=True)
         final_url = normalize_url(r.url)
     except Exception:
         final_url = normalize_url(best["url"])
 
     best["url"] = final_url
-    return best
-
-
-    
-    # optional debug: print top candidates
-    # candidates_sorted = sorted(candidates, key=lambda x: x['score'], reverse=True)
-    # print("DEBUG candidates:", [(c['score'], c['url']) for c in candidates_sorted[:5]])
-
-    best = max(candidates, key=lambda x: x["score"])
     return best
 
 def normalize_item(it):
