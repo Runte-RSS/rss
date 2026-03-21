@@ -75,3 +75,34 @@ jobs:
           else
             echo "No changes to commit"
           fi
+
+      - name: Commit and push feed changes (verbose)
+        run: |
+          set -x
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # show what changed
+          git status --porcelain
+          git --no-pager diff --name-only
+          # stage files (no-op if missing)
+          git add rss.xml seen.json || true
+          # show staged
+          git diff --cached --name-only || true
+          # commit (fail if commit fails for reasons other than "no changes")
+          if git commit -m "Auto-update rss.xml and seen.json (GitHub Actions)"; then
+            echo "Committed changes, attempting push..."
+          else
+            echo "No commit created or commit failed; showing last commit"
+            git --no-pager log -n 1 --pretty=oneline
+          fi
+          # show remote HEAD before push
+          git fetch origin
+          git rev-parse origin/main || true
+          # push and capture output
+          if ! git push origin HEAD:main --verbose; then
+            echo "Push failed; show remote refs and permissions"
+            git remote -v
+            git ls-remote origin
+            exit 1
+          fi
+
