@@ -114,5 +114,16 @@ jobs:
           echo "HEAD request to a failing page:"
           curl -I -L -sS "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "No requirements.txt found; installing cloudscraper only"
+            pip install cloudscraper
+          fi
+
+
 
 
