@@ -199,6 +199,32 @@ def find_latest_chapter(page_url, title=None, debug=False):
         # fallback to a simpler GET (will raise if it fails)
         page_html = http_get(page_url)
         canonical_page_url = normalize_url(page_url)
+    # If the response looks like a Cloudflare challenge page, try cloudscraper once
+    # (check headers and a short snippet of the body)
+    cf_challenge = False
+    try:
+        hdrs = getattr(rpage, "headers", {}) or {}
+        body_head = (page_html or "")[:512].lower()
+        if hdrs.get("Cf-Mitigated") or "just a moment" in body_head or "cf-challenge" in body_head:
+            cf_challenge = True
+    except Exception:
+        cf_challenge = False
+
+    if cf_challenge:
+        if debug:
+            print("DEBUG: Detected Cloudflare challenge; retrying with cloudscraper for", page_url)
+        try:
+            scraper = cloudscraper.create_scraper(browser={'custom': HEADERS['User-Agent']})
+            rpage2 = scraper.get(page_url, timeout=12, allow_redirects=True)
+            rpage2.raise_for_status()
+            page_html = rpage2.text
+            canonical_page_url = normalize_url(rpage2.url)
+            if debug:
+                print("DEBUG: cloudscraper succeeded, using fetched page")
+        except Exception as e:
+            if debug:
+                print("DEBUG: cloudscraper retry failed:", repr(e))
+            # fall back to whatever we already have (challenge page) — but continue
 
     soup = BeautifulSoup(page_html, "html.parser")
     candidates = []
@@ -222,9 +248,10 @@ def find_latest_chapter(page_url, title=None, debug=False):
         if not (is_chapter_url or is_chapter_text or re.search(r"\d", full)):
             continue
 
-        # extract numeric tokens and filter out years/timestamps
+                # extract numeric tokens from the candidate URL (in order)
         url_nums = re.findall(r"(\d+(?:\.\d+)?)", full)
 
+        # helper tests
         def is_year_token(n):
             try:
                 v = int(float(n)); return 1900 <= v <= 2100
@@ -237,41 +264,65 @@ def find_latest_chapter(page_url, title=None, debug=False):
             except Exception:
                 return False
 
-        url_nums = [
-            n for n in url_nums
-            if not is_year_token(n)
-            and not is_timestamp_token(n)
-            and (len(n) < 7 and int(float(n)) < 1_000_000)
-        ]
+        # drop year-like, epoch-like, extremely large tokens, and the manga id itself
+        filtered_nums = []
+        for n in url_nums:
+            try:
+                iv = int(float(n))
+            except Exception:
+                continue
+            if expected_id and iv == int(expected_id):
+                # skip the manga id token — not a chapter number
+                continue
+            if is_year_token(n):
+                continue
+            if is_timestamp_token(n):
+                continue
+            if iv >= 1_000_000:   # safety threshold for absurdly large IDs
+                continue
+            filtered_nums.append(n)
 
+        # 1) Prefer explicit chapter patterns in the URL (chapter-123, /chapter/123, /c/123)
         chap_num = None
-        m_after = re.search(r"(?:chapter|chap|read|page)[^0-9]{0,6}(\d+(?:\.\d+)?)", full, re.IGNORECASE)
+        m_after = re.search(r"(?:chapter|chap|read|page|c)[^0-9]{0,6}(\d+(?:\.\d+)?)", full, re.IGNORECASE)
         if m_after:
             try:
-                chap_num = float(m_after.group(1))
+                cand = m_after.group(1)
+                if not (expected_id and int(float(cand)) == int(expected_id)):
+                    chap_num = float(cand)
             except Exception:
                 chap_num = None
 
-        # reject absurdly large numbers
+        # 2) Prefer numbers in the anchor text (e.g., "Chapter 43")
+        if chap_num is None:
+            m_text = re.search(r"(?:chapter|chap|ch)[^\d]{0,6}(\d+(?:\.\d+)?)", text, re.IGNORECASE)
+            if m_text:
+                try:
+                    cand = m_text.group(1)
+                    if not (expected_id and int(float(cand)) == int(expected_id)):
+                        chap_num = float(cand)
+                except Exception:
+                    chap_num = None
+
+        # 3) Fallback to last reasonable numeric token from the filtered URL tokens
+        if chap_num is None and filtered_nums:
+            try:
+                chap_num = float(filtered_nums[-1])
+            except Exception:
+                chap_num = None
+
+        # 4) Final sanity checks: reject year-like or absurdly large numbers
         if chap_num is not None:
             try:
                 n = int(float(chap_num))
             except Exception:
                 n = None
-            if n is not None:
-                if 1900 <= n <= 2100 or n >= 100000:
-                    chap_num = None
-
-        if chap_num is None:
-            # fallback to last reasonable numeric token
-            if url_nums:
-                try:
-                    chap_num = float(url_nums[-1])
-                except Exception:
-                    chap_num = None
+            if n is None or (1900 <= n <= 2100) or n >= 1000000:
+                chap_num = None
 
         if chap_num is None:
             continue
+
 
         # Strict ID check: require the page's numeric manga id to appear in candidate URL
         if expected_id and expected_id not in full:
