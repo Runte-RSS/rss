@@ -97,6 +97,7 @@ def fetch_url(url, timeout=15, allow_cloudscraper=True, debug=False):
     # small jitter to avoid bursts from CI
     time.sleep(random.uniform(0.3, 1.2))
     try:
+        # <-- use session.get here (was incorrectly calling fetch_url recursively)
         r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
         r.raise_for_status()
         return r
@@ -118,6 +119,7 @@ def fetch_url(url, timeout=15, allow_cloudscraper=True, debug=False):
                 raise
         raise
 
+
 def parse_chap_num(text):
     """
     Return a numeric chapter value for sorting (float), or -1.0 if none found.
@@ -128,7 +130,7 @@ def parse_chap_num(text):
 
 
 def extract_thumbnail(page_url):
-    r = requests.get(page_url, timeout=15)
+    r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
     soup = BeautifulSoup(r.text, "html.parser")
 
     # 1) prefer og:image
@@ -169,7 +171,7 @@ def save_seen(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def http_get(url, timeout=20):
-    r = requests.get(url, headers=HEADERS, timeout=timeout)
+    r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
     r.raise_for_status()
     return r.text
 
@@ -183,7 +185,7 @@ ID_RE = re.compile(r"/manga/(\d+)[-/]?", re.IGNORECASE)
 def find_latest_chapter(page_url, title=None, debug=False):
     # fetch page and follow redirects so we use canonical URL
     try:
-        rpage = requests.get(page_url, headers=HEADERS, timeout=15)
+        r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
         rpage.raise_for_status()
         page_html = rpage.text
         canonical_page_url = normalize_url(rpage.url)
@@ -318,7 +320,7 @@ def find_latest_chapter(page_url, title=None, debug=False):
 
     # follow redirects for the chosen chapter URL and normalize
     try:
-        r = requests.get(best["url"], headers=HEADERS, timeout=10)
+        r = fetch_url(url, timeout=15, allow_cloudscraper=True, debug=True)
         final_url = normalize_url(r.url)
     except Exception:
         final_url = normalize_url(best["url"])
