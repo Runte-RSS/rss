@@ -93,7 +93,8 @@ session.mount("https://", HTTPAdapter(max_retries=retries))
 session.mount("http://", HTTPAdapter(max_retries=retries))
 
 # --- helper fetch function (use everywhere instead of session.get directly) ---
-def fetch_url(url, timeout=15, allow_cloudscraper=True, debug=False):
+def fetch_url(url, timeout=12, allow_cloudscraper=True, debug=False):
+    """Use requests session first, fallback to cloudscraper on failure."""
     time.sleep(random.uniform(0.05, 0.25))   # tiny jitter
     try:
         r = session.get(url, timeout=timeout, allow_redirects=True)
@@ -102,9 +103,10 @@ def fetch_url(url, timeout=15, allow_cloudscraper=True, debug=False):
     except Exception as e:
         if debug:
             print("fetch_url: requests failed for", url, "error:", repr(e))
-            if hasattr(e, "response") and e.response is not None:
-                print("Response head:", e.response.status_code, e.response.headers)
-                print(e.response.text[:1000])
+            resp = getattr(e, "response", None)
+            if resp is not None:
+                print("Response head:", resp.status_code, resp.headers)
+                print(resp.text[:1000])
         if allow_cloudscraper:
             try:
                 scraper = cloudscraper.create_scraper(browser={'custom': HEADERS['User-Agent']})
@@ -128,8 +130,9 @@ def parse_chap_num(text):
     return float(m.group(1)) if m else -1.0
 
 
-def extract_thumbnail(page_url):
-    r = fetch_url(page_url, timeout=15, allow_cloudscraper=True, debug=True)
+def extract_thumbnail(page_url, debug=False):
+    """Return best thumbnail URL found on page_url or None."""
+    r = fetch_url(page_url, timeout=12, allow_cloudscraper=True, debug=debug)
     soup = BeautifulSoup(r.text, "html.parser")
 
     # 1) prefer og:image
@@ -150,6 +153,7 @@ def extract_thumbnail(page_url):
                 return urljoin(page_url, val.strip())
 
     return None
+    
 def now_rfc2822():
     return format_datetime(datetime.now(timezone.utc))
 
@@ -182,15 +186,17 @@ from urllib.parse import urlparse, urljoin
 ID_RE = re.compile(r"/manga/(\d+)[-/]?", re.IGNORECASE)
 
 def find_latest_chapter(page_url, title=None, debug=False):
-    # fetch page and follow redirects so we use canonical URL
+    """
+    Parse the listing page and return the best candidate dict:
+    { "url": "...", "text": "...", "score": float } or None.
+    """
     try:
-        r = fetch_url(page_url, timeout=15, allow_cloudscraper=True, debug=True)
-       rpage = fetch_url(page_url, timeout=15, allow_cloudscraper=True, debug=debug)
+        rpage = fetch_url(page_url, timeout=12, allow_cloudscraper=True, debug=debug)
         rpage.raise_for_status()
         page_html = rpage.text
         canonical_page_url = normalize_url(rpage.url)
-
     except Exception:
+        # fallback to a simpler GET (will raise if it fails)
         page_html = http_get(page_url)
         canonical_page_url = normalize_url(page_url)
 
@@ -206,49 +212,31 @@ def find_latest_chapter(page_url, title=None, debug=False):
         full = urljoin(canonical_page_url, href)
         text = a.get_text(" ", strip=True) or ""
 
-                # quick filter for likely chapter links
-        # allow if URL or text contains explicit chapter/read markers
-                # quick filter for likely chapter links
+        # quick filters
         is_chapter_url = bool(re.search(r"(?:/chapter/|/read/|/c/|chapter-|chap-|\bchapter\b|\bchap\b|\bch\b|/page/)", full, re.IGNORECASE))
         is_chapter_text = bool(re.search(r"(?:chapter|chap|ch)\s*\d", text, re.IGNORECASE))
-
-        # detect plain listing pages like /manga/slug or /manhwa/slug-2025 (not chapter pages)
         is_listing_page = bool(re.search(r"/(?:manga|manhwa|manhua)/[^/]+(?:$|/|[-]\d{4}(?:$|/))", full, re.IGNORECASE))
 
-        # If it's a plain listing page and not explicitly a chapter link by URL or text, skip it
         if is_listing_page and not (is_chapter_url or is_chapter_text):
             continue
-
-        # If it is neither a chapter-like URL nor chapter-like text nor contains any digit, skip it
         if not (is_chapter_url or is_chapter_text or re.search(r"\d", full)):
             continue
 
-
-
-                # --- improved chapter number extraction ---
-                # improved chapter number extraction
-        chap_num = None
-
-        # all numeric tokens in the URL (in order)
-                # all numeric tokens in the URL (in order)
+        # extract numeric tokens and filter out years/timestamps
         url_nums = re.findall(r"(\d+(?:\.\d+)?)", full)
 
-        # helper tests
         def is_year_token(n):
             try:
-                v = int(float(n))
-                return 1900 <= v <= 2100
+                v = int(float(n)); return 1900 <= v <= 2100
             except Exception:
                 return False
 
         def is_timestamp_token(n):
             try:
-                v = int(float(n))
-                return v >= 1_000_000_000  # 10-digit epoch-like numbers
+                v = int(float(n)); return v >= 1_000_000_000
             except Exception:
                 return False
 
-        # drop year-like, epoch-like, and very large tokens
         url_nums = [
             n for n in url_nums
             if not is_year_token(n)
@@ -256,8 +244,7 @@ def find_latest_chapter(page_url, title=None, debug=False):
             and (len(n) < 7 and int(float(n)) < 1_000_000)
         ]
 
-
-        # prefer numbers that appear after chapter/chap/read/page in the URL
+        chap_num = None
         m_after = re.search(r"(?:chapter|chap|read|page)[^0-9]{0,6}(\d+(?:\.\d+)?)", full, re.IGNORECASE)
         if m_after:
             try:
@@ -265,39 +252,33 @@ def find_latest_chapter(page_url, title=None, debug=False):
             except Exception:
                 chap_num = None
 
-                # --- reject obviously bogus chapter numbers (timestamps / huge IDs) ---
+        # reject absurdly large numbers
         if chap_num is not None:
             try:
-                # treat as integer for threshold checks
                 n = int(float(chap_num))
             except Exception:
                 n = None
-
-            # ignore year-like, epoch-like, or otherwise absurdly large numbers
             if n is not None:
-                if 1900 <= n <= 2100:
-                    # a year alone is not a chapter number (unless you want to allow it)
+                if 1900 <= n <= 2100 or n >= 100000:
                     chap_num = None
-                elif n >= 1_000_000:   # epoch-like or huge ID
-                    chap_num = None
-                elif n >= 100_000:     # very large, unlikely to be a real chapter
+
+        if chap_num is None:
+            # fallback to last reasonable numeric token
+            if url_nums:
+                try:
+                    chap_num = float(url_nums[-1])
+                except Exception:
                     chap_num = None
 
         if chap_num is None:
             continue
 
-
-        # --- end improved extraction ---
-
-
         # Strict ID check: require the page's numeric manga id to appear in candidate URL
         if expected_id and expected_id not in full:
-            # allow only if anchor text clearly mentions the title (first 3 words)
             title_words = [w.lower() for w in (title or "").split()[:3]]
             if not any(w for w in title_words if w and w in text.lower()):
                 continue
 
-        # small boost if anchor text contains title words
         boost = 0.1 if title and any(w.lower() in text.lower() for w in title.split()[:3]) else 0.0
 
         candidates.append({
@@ -306,7 +287,6 @@ def find_latest_chapter(page_url, title=None, debug=False):
             "score": chap_num + boost
         })
 
-    # debug output (only inside function so variables exist)
     if debug:
         print("DEBUG canonical_page_url:", canonical_page_url)
         print("DEBUG expected_id:", expected_id)
@@ -321,8 +301,8 @@ def find_latest_chapter(page_url, title=None, debug=False):
 
     # follow redirects for the chosen chapter URL and normalize
     try:
-        r = fetch_url(best["url"], timeout=15, allow_cloudscraper=True, debug=True)
-        final_url = normalize_url(r.url)
+        rfinal = fetch_url(best["url"], timeout=12, allow_cloudscraper=True, debug=debug)
+        final_url = normalize_url(rfinal.url)
     except Exception:
         final_url = normalize_url(best["url"])
 
