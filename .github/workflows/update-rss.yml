@@ -106,3 +106,13 @@ jobs:
             exit 1
           fi
 
+      - name: Debug remote access to mangamirror
+        run: |
+          echo "Runner public IP (for debugging):"
+          curl -sS https://ifconfig.me || true
+          echo
+          echo "HEAD request to a failing page:"
+          curl -I -L -sS "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
+
+
+
