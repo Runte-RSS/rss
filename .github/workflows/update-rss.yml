@@ -30,13 +30,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            echo "No requirements.txt found; skipping dependency install" >&2
-            exit 1
-          fi
+            python -m pip install --upgrade pip setuptools wheel
+            if [ -f requirements.txt ]; then
+              pip install -r requirements.txt
+            else
+              echo "No requirements.txt found; installing cloudscraper only"
+              pip install cloudscraper
+            fi
 
       - name: Debug Python environment
         run: |
@@ -54,6 +54,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - name: Debug remote access to mangamirror
+        run: |
+          echo "Runner public IP (for debugging):"
+          curl -sS https://ifconfig.me || true
+          echo
+          echo "HEAD request to a failing page (with browser UA):"
+          curl -I -L -sS -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
+            -H "Accept: text/html" \
+            "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
+
+      
       - name: Run feed generator
         run: |
           python generate_feed.py
@@ -104,24 +115,6 @@ jobs:
             git remote -v
             git ls-remote origin
             exit 1
-          fi
-
-      - name: Debug remote access to mangamirror
-        run: |
-          echo "Runner public IP (for debugging):"
-          curl -sS https://ifconfig.me || true
-          echo
-          echo "HEAD request to a failing page:"
-          curl -I -L -sS "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            echo "No requirements.txt found; installing cloudscraper only"
-            pip install cloudscraper
           fi
 
 
