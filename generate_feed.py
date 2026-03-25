@@ -63,7 +63,11 @@ SITES = [
         "title": "Don't Expect Me to Take Responsibility",
         "url": "https://mangamirror.com/manga/132868-dont-expect-me-to-take-responsibility",
         "image": "https://puu.sh/KKikc.png",
-    },
+    },{
+        "title": "Nia Liston: The Merciless Maiden",
+        "url": "https://mangamirror.com/manga/107322-nia-liston-the-merciless-maiden",
+        "image": "https://cdn.anisearch.com/images/manga/cover/76/76700_600.webp",
+    }
     # Example: add more sites below
     # {
     #   "title": "Another Manga",
