@@ -1,124 +1,148 @@
 #!/usr/bin/env python3
 """
-remove_empty_items.py
-Removes items with empty title/link/description from rss.xml and matching seen.json entries.
+Conservative remove_empty_items.py
+
+Removes only items where title, link, description, and guid are ALL empty.
 Usage:
   python remove_empty_items.py --rss rss.xml --seen seen.json [--dry-run]
 """
-import argparse, json, shutil, os, re, sys
+import argparse
+import json
+import os
+import shutil
+import sys
 import xml.etree.ElementTree as ET
-from xml.etree.ElementTree import ParseError
 
-def backup(p):
-    if os.path.exists(p):
-        shutil.copy2(p, p + ".bak")
+def backup(path):
+    if os.path.exists(path):
+        shutil.copy2(path, path + ".bak")
+        print(f"Backed up {path} -> {path}.bak")
 
-def safe_parse_xml(path):
-    # Try normal parse first
-    try:
-        return ET.parse(path)
-    except ParseError as e:
-        print(f"Initial XML parse failed: {e}")
-    except Exception as e:
-        print(f"Initial XML parse unexpected error: {e}")
-
-    # Try to repair: read as text, remove control chars except \t\n\r, strip leading garbage before <?xml
-    try:
-        with open(path, "rb") as f:
-            raw = f.read()
-        # Try decode as utf-8 with replacement to avoid decode errors
-        text = raw.decode("utf-8", errors="replace")
-        # Remove C0 control chars except tab/newline/carriage return
-        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
-        # If file contains garbage before XML declaration, strip everything before first '<'
-        first_lt = text.find('<')
-        if first_lt > 0:
-            print(f"Stripping {first_lt} leading bytes before first '<'")
-            text = text[first_lt:]
-        # Ensure it starts with <?xml or <rss or <feed
-        if not re.match(r'^\s*<\?xml|^\s*<rss|^\s*<feed', text, flags=re.I):
-            print("Repaired text does not start with XML root; aborting repair.")
-            raise ParseError("Repaired text missing XML root")
-        # Write to a temp file and try parse
-        tmp = path + ".repair.tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(text)
+def load_seen(seen_path):
+    if not os.path.exists(seen_path):
+        return []
+    with open(seen_path, "r", encoding="utf-8") as f:
         try:
-            tree = ET.parse(tmp)
-            print("Repair parse succeeded; will use repaired content.")
-            # overwrite original with repaired content (but keep backup)
-            backup(path)
-            shutil.move(tmp, path)
-            return ET.parse(path)
-        finally:
-            if os.path.exists(tmp):
-                os.remove(tmp)
-    except ParseError as e:
-        print("Repair attempt failed:", e)
-    except Exception as e:
-        print("Repair attempt unexpected error:", e)
+            data = json.load(f)
+        except Exception:
+            return []
+    # Support two shapes: list of strings or {"items": [...]}
+    if isinstance(data, dict) and "items" in data:
+        return data["items"]
+    if isinstance(data, list):
+        return data
+    return []
 
-    # If we reach here, parsing failed
-    raise SystemExit(2)
+def write_seen(seen_path, items):
+    # Preserve original shape as a simple list
+    with open(seen_path, "w", encoding="utf-8") as f:
+        json.dump(items, f, indent=2, ensure_ascii=False)
+    print(f"Wrote seen.json ({len(items)} entries)")
 
-def run(rss, seen, dry):
-    tree = safe_parse_xml(rss)
+def text_of(el):
+    if el is None:
+        return ""
+    return (el.text or "").strip()
+
+def run(rss_path, seen_path, dry_run):
+    # Parse XML (let exceptions bubble up so caller sees parse errors)
+    tree = ET.parse(rss_path)
     root = tree.getroot()
     channel = root.find('channel')
     if channel is None:
-        # try namespace fallback
-        channel = root.find('{http://purl.org/rss/1.0/}channel')
-    if channel is None:
-        print("No channel element found; aborting.")
-        raise SystemExit(3)
+        print("No <channel> element found; aborting.")
+        sys.exit(2)
 
+    # Collect items to remove
     to_remove = []
     for item in channel.findall('item'):
-        title = (item.find('title').text or '').strip() if item.find('title') is not None else ''
-        link = (item.find('link').text or '').strip() if item.find('link') is not None else ''
-        desc = (item.find('description').text or '').strip() if item.find('description') is not None else ''
-        if not (title or link or desc):
-            guid = item.find('guid').text if item.find('guid') is not None else None
-            to_remove.append((item, guid))
+        title = text_of(item.find('title'))
+        link = text_of(item.find('link'))
+        desc = text_of(item.find('description'))
+        guid_el = item.find('guid')
+        guid = text_of(guid_el) if guid_el is not None else ""
 
-    print("Found", len(to_remove), "empty items")
-    if dry:
-        for _,g in to_remove:
-            print("Would remove guid:", g)
+        # Conservative rule: remove only if ALL are empty
+        if not (title or link or desc or guid):
+            # capture some context for logging
+            to_remove.append({
+                "item": item,
+                "guid": guid or None,
+                "link": link or None,
+            })
+
+    print(f"Found {len(to_remove)} candidate empty items (conservative rule)")
+
+    if dry_run:
+        if to_remove:
+            print("Dry-run: the following items would be removed:")
+            for i, info in enumerate(to_remove, 1):
+                print(f" {i}. guid={info['guid']}, link={info['link']}")
+        else:
+            print("Dry-run: no items to remove")
         return
 
-    backup(rss); backup(seen)
+    if not to_remove:
+        print("No items to remove; exiting.")
+        return
+
+    # Backup before modifying
+    backup(rss_path)
+    backup(seen_path)
+
+    # Remove items and collect GUIDs removed
     removed_guids = []
-    for item,guid in to_remove:
+    for info in to_remove:
+        item = info["item"]
+        guid_text = info["guid"]
         channel.remove(item)
-        if guid:
-            removed_guids.append(guid)
-    tree.write(rss, encoding='utf-8', xml_declaration=True)
-    # prune seen.json
-    if os.path.exists(seen):
-        with open(seen,'r',encoding='utf-8') as f:
-            try:
-                data = json.load(f)
-            except Exception:
-                data = {"items": []}
-        items = data.get('items', data)
-        orig_list_of_strings = all(isinstance(x,str) for x in items)
+        if guid_text:
+            removed_guids.append(guid_text)
+
+    # Write updated RSS
+    tree.write(rss_path, encoding='utf-8', xml_declaration=True)
+    print(f"Removed {len(to_remove)} items from {rss_path}")
+
+    # Prune seen.json: remove any removed GUIDs from seen list
+    if os.path.exists(seen_path) and removed_guids:
+        seen_list = load_seen(seen_path)
+        # If seen_list is list of dicts or strings, normalize to strings if possible
         normalized = []
-        for it in items:
-            if isinstance(it,str):
-                normalized.append({'guid':it,'seen_at':None})
-            else:
-                normalized.append({'guid':it.get('guid'),'seen_at':it.get('seen_at')})
-        kept = [it for it in normalized if it['guid'] not in removed_guids]
-        out = {'items':[it['guid'] for it in kept]} if orig_list_of_strings else {'items':kept}
-        with open(seen,'w',encoding='utf-8') as f:
-            json.dump(out,f,indent=2,ensure_ascii=False)
-    print("Removed", len(removed_guids), "seen entries")
+        if all(isinstance(x, str) for x in seen_list):
+            normalized = seen_list
+            kept = [g for g in normalized if g not in removed_guids]
+            write_seen(seen_path, kept)
+        else:
+            # If items are objects with 'guid' keys, preserve structure
+            kept_objs = []
+            for it in seen_list:
+                if isinstance(it, dict):
+                    if it.get('guid') not in removed_guids:
+                        kept_objs.append(it)
+                elif isinstance(it, str):
+                    if it not in removed_guids:
+                        kept_objs.append(it)
+            # Write back in the same top-level shape as before if it was dict with items
+            # We will write a simple list if original was list-like
+            write_seen(seen_path, kept_objs)
+        print(f"Pruned {len(removed_guids)} GUIDs from {seen_path}")
+    else:
+        print("No seen.json pruning needed")
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument('--rss', required=True, help='Path to rss.xml')
+    p.add_argument('--seen', required=True, help='Path to seen.json')
+    p.add_argument('--dry-run', action='store_true', help='Show what would be removed')
+    args = p.parse_args()
+    try:
+        run(args.rss, args.seen, args.dry_run)
+    except ET.ParseError as e:
+        print("XML parse error:", e)
+        sys.exit(1)
+    except Exception as e:
+        print("Unexpected error:", e)
+        sys.exit(2)
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser()
-    p.add_argument('--rss', required=True)
-    p.add_argument('--seen', required=True)
-    p.add_argument('--dry-run', action='store_true')
-    args = p.parse_args()
-    run(args.rss, args.seen, args.dry_run)
+    main()
