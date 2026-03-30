@@ -66,7 +66,7 @@ jobs:
 
       - name: Remove empty RSS items (pre-clean)
         run: |
-          python remove_empty_items.py --rss rss.xml --seen seen.json --dry-run --verbose || true
+          python remove_empty_items.py --rss rss.xml --seen seen.json --dry-run || true
           # Inspect dry-run output in logs for a few runs, then run for real:
           python remove_empty_items.py --rss rss.xml --seen seen.json
           git add rss.xml seen.json || true
