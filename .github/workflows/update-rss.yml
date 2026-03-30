@@ -113,20 +113,6 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Fill missing titles in rss.xml
-        run: |
-          # run the filler script; it should write rss.fixed.xml when it makes changes
-          python scripts/fill_titles.py --input rss.xml --output rss.fixed.xml || true
-
-          # if the script produced a fixed file, replace rss.xml atomically
-          if [ -f rss.fixed.xml ]; then
-            mv rss.fixed.xml rss.xml
-            echo "Applied title fixes to rss.xml"
-          else
-            echo "No title fixes applied"
-          fi
-
-
       - name: Show changed files
         run: |
           git status --porcelain
