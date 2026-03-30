@@ -5,6 +5,7 @@
 import re
 from dateutil import parser as dateparser
 import json
+import xml.etree.ElementTree as ET
 import os
 import hashlib
 from datetime import datetime, timezone
@@ -18,7 +19,6 @@ from xml.sax.saxutils import escape
 import cloudscraper
 import time
 import random
-
 
 RSS_FILE = "rss.xml"
 SEEN_FILE = "seen.json"
@@ -184,6 +184,108 @@ def normalize_url(u):
 from urllib.parse import urlparse, urljoin
 
 ID_RE = re.compile(r"/manga/(\d+)[-/]?", re.IGNORECASE)
+
+def assemble_title(scraped_title, link, site_title=None):
+    """
+    Prefer a scraped title only when it looks like a real series name.
+    If scraped_title is just a chapter token (e.g. "Chapter 42", "Ch. 42"),
+    prefer the canonical site_title or the URL slug instead, then append chapter.
+    """
+    # helper: decide whether scraped_title is useful (not just "Chapter N")
+    def scraped_is_useful(s):
+        if not s:
+            return False
+        s = s.strip()
+        # if it starts with "chapter", "chap", "ch" followed by digits, it's not useful
+        if re.match(r'^\s*(?:chapter|chap|ch)\b', s, flags=re.I):
+            return False
+        # if it's very short (1-2 words) and contains only "chapter" + number, reject
+        words = s.split()
+        if len(words) <= 2 and re.search(r'\d', s) and any(re.match(r'^(?:chapter|chap|ch)\b', w, flags=re.I) for w in words):
+            return False
+        # otherwise accept
+        return True
+
+    # choose base: prefer useful scraped_title, else site_title, else slug
+    if scraped_title and scraped_is_useful(scraped_title):
+        base = strip_leading_id(scraped_title.strip())
+    else:
+        base = strip_leading_id(site_title or '') if site_title else title_from_link(link) or ''
+
+    # append chapter suffix if not already present
+    chap = extract_chapter_from_link(link)
+    if chap and not re.search(r'chapter\s*\d+', base, flags=re.I):
+        final = (base + chap).strip()
+    else:
+        final = base.strip()
+
+    # final fallback: if still empty, use slug (without removing numbers)
+    if not final:
+        final = title_from_link(link) or ''
+    return final
+
+
+# --- Title and site helpers (insert after ID_RE) ---
+def domain_of(url):
+    try:
+        return urlparse(url).netloc.lower()
+    except Exception:
+        return ''
+
+def find_site_for_link(link, SITES):
+    """Return the SITES entry that best matches link (domain first, then substring)."""
+    if not link:
+        return None
+    d = domain_of(link)
+    # domain match
+    for s in SITES:
+        if domain_of(s.get('url', '')) == d:
+            return s
+    # substring match (listing URL inside chapter URL)
+    for s in SITES:
+        u = s.get('url', '').rstrip('/')
+        if u and u in link:
+            return s
+    return None
+
+def extract_chapter_from_link(link):
+    """
+    Return a string like ' — Chapter 94' when a chapter number is found in the URL.
+    Returns empty string if none found.
+    """
+    if not link:
+        return ''
+    m = re.search(r'chapter[-_/ ]?(\d+(?:\.\d+)?)', link, flags=re.I)
+    if not m:
+        m = re.search(r'/chapters/(\d+(?:\.\d+)?)', link, flags=re.I)
+    if m:
+        try:
+            return f' — Chapter {int(float(m.group(1)))}'
+        except Exception:
+            return f' — Chapter {m.group(1)}'
+    return ''
+
+def strip_leading_id(title):
+    """Remove a leading numeric id like '119653 ' or '119653-' but keep everything else."""
+    if not title:
+        return title
+    t = title.strip()
+    # remove leading digits + optional separator
+    t = re.sub(r'^\s*\d+\s*[-_:]?\s*', '', t)
+    return re.sub(r'\s+', ' ', t).strip()
+
+def title_from_link(link):
+    """Fallback: derive a readable base title from the URL slug."""
+    if not link:
+        return None
+    parts = [p for p in urlparse(link).path.split('/') if p]
+    candidate = parts[-2] if len(parts) >= 2 else parts[-1]
+    candidate = re.sub(r'^\d+[-_]*', '', candidate)
+    candidate = candidate.replace('-', ' ').replace('_', ' ')
+    candidate = re.sub(r'\s+', ' ', candidate).strip()
+    return candidate.title() if candidate else None
+# --- end helpers ---
+
 
 def find_latest_chapter(page_url, title=None, debug=False):
     """
@@ -360,16 +462,28 @@ def find_latest_chapter(page_url, title=None, debug=False):
     best["url"] = final_url
     return best
 
-def normalize_item(it):
+def normalize_item(it, site=None, scraped_title=None):
     now = now_rfc2822()
+    # preserve an existing non-empty title
+    title = (it.get("title") or "").strip()
+    if not title:
+        title = assemble_title(scraped_title, it.get("link", ""), site.get("title") if site else None)
+
+    # keep guid stable: prefer existing guid, else make one from link
+    guid = it.get("guid")
+    if not guid:
+        guid = make_guid(it.get("link", ""))
+
     return {
-        "title": it.get("title", ""),
+        "title": title,
         "link": it.get("link", ""),
-        "guid": it.get("guid", make_guid(it.get("title","") + "|" + it.get("link",""))),
+        "guid": guid,
         "pubDate": it.get("pubDate", now),
         "description": it.get("description", ""),
         "image": it.get("image", ""),
     }
+
+
 
 def write_rss(channel_title, channel_link, channel_desc, items, out_file):
     items = items[:MAX_ITEMS]
@@ -384,19 +498,29 @@ def write_rss(channel_title, channel_link, channel_desc, items, out_file):
     )
     items_xml = ""
     for it in items:
+        title_text = it.get('title') or ''
         items_xml += "    <item>\n"
-        items_xml += f"      <title>{escape(it.get('title',''))}</title>\n"
+        items_xml += f"      <title>{escape(title_text)}</title>\n"
         items_xml += f"      <link>{escape(it.get('link',''))}</link>\n"
         items_xml += f"      <guid isPermaLink=\"false\">{escape(it.get('guid',''))}</guid>\n"
         items_xml += f"      <pubDate>{escape(it.get('pubDate',''))}</pubDate>\n"
         if it.get("image"):
             items_xml += f"      <media:thumbnail url=\"{escape(it['image'])}\" />\n"
-            items_xml += f"      <enclosure url=\"{escape(it['image'])}\" type=\"image/jpeg\" />\n"
+            items_xml += f"      <enclosure url=\"{escape(it['image'])}\" type=\"image/jpeg\" />\n        "
         items_xml += f"      <description><![CDATA[{it.get('description','')}]]></description>\n"
         items_xml += "    </item>\n"
     footer = "  </channel>\n</rss>\n"
-    with open(out_file, "w", encoding="utf-8") as f:
+
+    tmp = out_file + '.tmp'
+    with open(tmp, "w", encoding="utf-8") as f:
         f.write(header + items_xml + footer)
+
+    # validate XML (will raise if malformed)
+    ET.parse(tmp)
+
+    # atomic replace
+    os.replace(tmp, out_file)
+
 
 def main():
     seen = load_seen()
@@ -424,18 +548,26 @@ def main():
             continue
 
         chapter_url = latest["url"]
-        score = latest["score"]
-        guid = make_guid(f"{title}|{score}|{chapter_url}")
+        score = latest.get("score")
+        # use stable GUID per chapter URL
+        guid = make_guid(chapter_url)
+
+        # assemble final title (prefer scraped text, else site title, else slug)
+        scraped_text = latest.get("text") or None
+        final_title = assemble_title(scraped_text, chapter_url, title)
 
         already = any(it.get("guid") == guid for it in history)
         if already:
             print("  No new chapter.")
-            # update existing entry link/image/pubDate if needed
+            # update existing entry link/image/pubDate and restore title if empty
             for i, it in enumerate(history):
                 if it.get("title") == title or it.get("guid") == guid:
                     it["link"] = chapter_url
                     it["image"] = thumb
                     it["pubDate"] = it.get("pubDate", now_rfc2822())
+                    # restore title if missing or empty
+                    if not (it.get("title") or "").strip():
+                        it["title"] = final_title
                     history[i] = normalize_item(it)
             continue
 
@@ -448,7 +580,8 @@ def main():
             f'<div><a href="{escape(page)}">{escape(title)}</a><br/>{escape(latest.get("text",""))}</div>'
         )
         item = {
-            "title": f"{title} — new chapter",
+            # use assembled title (keeps chapter number and strips numeric id)
+            "title": final_title,
             "link": chapter_url,
             "guid": guid,
             "pubDate": pubDate,
@@ -456,9 +589,59 @@ def main():
             "image": thumb,
         }
         print("  New chapter detected:", chapter_url)
-        history.insert(0, normalize_item(item))
+        history.insert(0, normalize_item(item, site=site, scraped_title=scraped_text))
 
     history = [normalize_item(it) for it in history][:MAX_ITEMS]
+    seen["items"] = history
+    save_seen(seen)
+
+        # --- canonicalize GUIDs and dedupe history by chapter URL ---
+    def is_chapter_only_title(t):
+        if not t:
+            return True
+        t = t.strip()
+        return bool(re.match(r'^\s*(?:chapter|chap|ch)[\.\s\-]*\d+', t, flags=re.I))
+
+    seen_by_guid = {}
+    # iterate in current order (newest first) and pick the best item per canonical guid
+    for it in history:
+        link = it.get("link", "") or ""
+        if not link:
+            continue
+        canonical_guid = make_guid(link)
+        # prefer an item with a non-chapter-only title; otherwise keep the first seen
+        existing = seen_by_guid.get(canonical_guid)
+        if existing is None:
+            # copy and set canonical guid
+            copy_it = dict(it)
+            copy_it["guid"] = canonical_guid
+            seen_by_guid[canonical_guid] = copy_it
+        else:
+            # decide which item is better
+            cur_title = (existing.get("title") or "").strip()
+            new_title = (it.get("title") or "").strip()
+            # prefer non-chapter-only title, or longer title
+            cur_bad = is_chapter_only_title(cur_title)
+            new_bad = is_chapter_only_title(new_title)
+            if (cur_bad and not new_bad) or (not cur_bad and not new_bad and len(new_title) > len(cur_title)):
+                copy_it = dict(it)
+                copy_it["guid"] = canonical_guid
+                seen_by_guid[canonical_guid] = copy_it
+
+    # rebuild history preserving original order (newest first)
+    new_history = []
+    for it in history:
+        link = it.get("link", "") or ""
+        if not link:
+            continue
+        canonical_guid = make_guid(link)
+        item = seen_by_guid.pop(canonical_guid, None)
+        if item:
+            new_history.append(item)
+
+    history = new_history[:MAX_ITEMS]
+    # final normalize pass that will not clobber titles (ensure normalize_item is conservative)
+    history = [normalize_item(it) for it in history]
     seen["items"] = history
     save_seen(seen)
 
@@ -470,6 +653,7 @@ def main():
         out_file=RSS_FILE,
     )
     print(f"Wrote {RSS_FILE} with {len(history)} items.")
+
 
 if __name__ == "__main__":
     main()
