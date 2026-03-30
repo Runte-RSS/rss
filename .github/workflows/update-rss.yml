@@ -64,18 +64,46 @@ jobs:
             -H "Accept: text/html" \
             "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
 
-      - name: Remove empty RSS items (pre-clean)
+      - name: Validate rss.xml before cleanup
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET, sys, shutil, os
+          try:
+              ET.parse('rss.xml')
+              print('rss.xml parse OK')
+          except Exception as e:
+              print('rss.xml parse failed:', e)
+              if os.path.exists('rss.xml.bak'):
+                  shutil.copy2('rss.xml.bak', 'rss.xml')
+                  print('Restored rss.xml from backup')
+              if os.path.exists('seen.json.bak'):
+                  shutil.copy2('seen.json.bak', 'seen.json')
+                  print('Restored seen.json from backup')
+              sys.exit(1)
+          PY
+ 
+
+      - name: Remove empty RSS items (pre-clean, no push)
+        run: |
+          # dry-run first while you confirm behavior
+          python remove_empty_items.py --rss rss.xml --seen seen.json --dry-run
+          # then run for real
+          python remove_empty_items.py --rss rss.xml --seen seen.json
+
+      # later: restore backups if generator fails
+      - name: Restore backups on failure
+        if: ${{ failure() }}
+        run: |
+          if [ -f rss.xml.bak ]; then cp rss.xml.bak rss.xml; fi
+          if [ -f seen.json.bak ]; then cp seen.json.bak seen.json; fi
+          echo "Restored backups because job failed"
+
+
+      - name: Remove empty RSS items (pre-clean, no push)
         run: |
           python remove_empty_items.py --rss rss.xml --seen seen.json --dry-run || true
-          # Inspect dry-run output in logs for a few runs, then run for real:
-          python remove_empty_items.py --rss rss.xml --seen seen.json
-          git add rss.xml seen.json || true
-          if git diff --staged --quiet; then
-            echo "No empty items removed"
-          else
-            git commit -m "Remove empty RSS items (pre-clean)" || true
-            git push origin HEAD:main
-          fi
+          python remove_empty_items.py --rss rss.xml --seen seen.json || true
+
 
       - name: Run feed generator
         run: |
