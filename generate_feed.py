@@ -464,24 +464,29 @@ def find_latest_chapter(page_url, title=None, debug=False):
 
 def normalize_item(it, site=None, scraped_title=None):
     now = now_rfc2822()
+
     # preserve an existing non-empty title
     title = (it.get("title") or "").strip()
     if not title:
         title = assemble_title(scraped_title, it.get("link", ""), site.get("title") if site else None)
 
+    # preserve an existing non-empty description
+    description = it.get("description")
+    if description is None:
+        description = ""
+
     # keep guid stable: prefer existing guid, else make one from link
-    guid = it.get("guid")
-    if not guid:
-        guid = make_guid(it.get("link", ""))
+    guid = it.get("guid") or make_guid(it.get("link", ""))
 
     return {
         "title": title,
         "link": it.get("link", ""),
         "guid": guid,
         "pubDate": it.get("pubDate", now),
-        "description": it.get("description", ""),
+        "description": description,
         "image": it.get("image", ""),
     }
+
 
 
 
@@ -549,17 +554,26 @@ def main():
 
         chapter_url = latest["url"]
         score = latest.get("score")
-        # use stable GUID per chapter URL
+                # use stable GUID per chapter URL
         guid = make_guid(chapter_url)
 
-        # assemble final title (prefer scraped text, else site title, else slug)
+               # assemble final title (prefer scraped text, else site title, else slug)
         scraped_text = latest.get("text") or None
         final_title = assemble_title(scraped_text, chapter_url, title)
+
+        # build the HTML description we use for new items and for updates
+        description_from_latest = (
+            f'<a href="{escape(chapter_url)}">'
+            f'<img src="{escape(thumb)}" alt="{escape(title)}" '
+            f'style="max-width:200px;height:auto;display:block;margin-bottom:8px;" />'
+            f'</a>'
+            f'<div><a href="{escape(page)}">{escape(title)}</a><br/>{escape(latest.get("text",""))}</div>'
+        )
 
         already = any(it.get("guid") == guid for it in history)
         if already:
             print("  No new chapter.")
-            # update existing entry link/image/pubDate and restore title if empty
+            # update existing entry link/image/pubDate and restore title/description if empty
             for i, it in enumerate(history):
                 if it.get("title") == title or it.get("guid") == guid:
                     it["link"] = chapter_url
@@ -568,8 +582,15 @@ def main():
                     # restore title if missing or empty
                     if not (it.get("title") or "").strip():
                         it["title"] = final_title
-                    history[i] = normalize_item(it)
+                    # restore description only if missing or empty
+                    if not (it.get("description") or "").strip():
+                        it["description"] = description_from_latest
+                    history[i] = normalize_item(it, site=site, scraped_title=scraped_text)
             continue
+
+
+
+
 
         # new chapter -> prepend
         pubDate = now_rfc2822()
@@ -580,7 +601,6 @@ def main():
             f'<div><a href="{escape(page)}">{escape(title)}</a><br/>{escape(latest.get("text",""))}</div>'
         )
         item = {
-            # use assembled title (keeps chapter number and strips numeric id)
             "title": final_title,
             "link": chapter_url,
             "guid": guid,
@@ -595,7 +615,7 @@ def main():
     seen["items"] = history
     save_seen(seen)
 
-        # --- canonicalize GUIDs and dedupe history by chapter URL ---
+    # --- canonicalize GUIDs and dedupe history by chapter URL ---
     def is_chapter_only_title(t):
         if not t:
             return True
@@ -609,24 +629,43 @@ def main():
         if not link:
             continue
         canonical_guid = make_guid(link)
-        # prefer an item with a non-chapter-only title; otherwise keep the first seen
         existing = seen_by_guid.get(canonical_guid)
+
         if existing is None:
-            # copy and set canonical guid
             copy_it = dict(it)
             copy_it["guid"] = canonical_guid
             seen_by_guid[canonical_guid] = copy_it
-        else:
-            # decide which item is better
-            cur_title = (existing.get("title") or "").strip()
-            new_title = (it.get("title") or "").strip()
-            # prefer non-chapter-only title, or longer title
-            cur_bad = is_chapter_only_title(cur_title)
-            new_bad = is_chapter_only_title(new_title)
-            if (cur_bad and not new_bad) or (not cur_bad and not new_bad and len(new_title) > len(cur_title)):
-                copy_it = dict(it)
-                copy_it["guid"] = canonical_guid
-                seen_by_guid[canonical_guid] = copy_it
+            continue
+
+        # decide which item is better: prefer non-chapter-only title, then non-empty description, then longer title
+        cur_title = (existing.get("title") or "").strip()
+        new_title = (it.get("title") or "").strip()
+        cur_bad = is_chapter_only_title(cur_title)
+        new_bad = is_chapter_only_title(new_title)
+
+        # description preference
+        cur_desc = (existing.get("description") or "").strip()
+        new_desc = (it.get("description") or "").strip()
+        cur_bad_desc = not cur_desc
+        new_bad_desc = not new_desc
+
+        # choose replacement when new item is strictly better
+        replace = False
+        if cur_bad and not new_bad:
+            replace = True
+        elif cur_bad == new_bad:
+            # prefer item with a non-empty description
+            if cur_bad_desc and not new_bad_desc:
+                replace = True
+            elif cur_bad_desc == new_bad_desc:
+                # tie-breaker: prefer longer title
+                if len(new_title) > len(cur_title):
+                    replace = True
+
+        if replace:
+            copy_it = dict(it)
+            copy_it["guid"] = canonical_guid
+            seen_by_guid[canonical_guid] = copy_it
 
     # rebuild history preserving original order (newest first)
     new_history = []
@@ -640,10 +679,18 @@ def main():
             new_history.append(item)
 
     history = new_history[:MAX_ITEMS]
-    # final normalize pass that will not clobber titles (ensure normalize_item is conservative)
+    # final normalize pass that will not clobber titles/descriptions (ensure normalize_item is conservative)
     history = [normalize_item(it) for it in history]
     seen["items"] = history
     save_seen(seen)
+
+
+
+    print("=== DESCRIPTION PREVIEW ===")
+    for i, it in enumerate(history[:20]):
+        print(i, "guid=", it.get("guid"), "title=", repr(it.get("title")), "desc_len=", len((it.get("description") or "").strip()))
+    print("===========================")
+  
 
     write_rss(
         channel_title="My Manga Watchlist",
