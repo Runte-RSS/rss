@@ -136,16 +136,22 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # show local changes for debugging
+          git status --porcelain
+          git --no-pager diff --name-only || true
+
+          # Fetch remote and rebase, auto-stashing any local changes
           git fetch origin main
-          # rebase to avoid creating merge conflicts on push
-          if ! git rebase origin/main; then
-            echo "Remote changed; aborting commit to avoid conflicts"
+          if ! git rebase --autostash origin/main; then
+            echo "Rebase failed; aborting to avoid conflicts"
             git rebase --abort || true
-            # restore backups so we don't leave broken files
+            # restore backups if you created them inside the repo
             if [ -f rss.xml.bak ]; then cp rss.xml.bak rss.xml; fi
             if [ -f seen.json.bak ]; then cp seen.json.bak seen.json; fi
             exit 1
           fi
+
           git add rss.xml seen.json || true
           if git diff --staged --quiet; then
             echo "No changes to commit"
@@ -153,6 +159,7 @@ jobs:
             git commit -m "Auto-update rss.xml and seen.json (GitHub Actions)"
             git push --force-with-lease origin HEAD:main
           fi
+
 
 
       - name: Commit and push feed changes (verbose)
