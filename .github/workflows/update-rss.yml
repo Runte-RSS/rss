@@ -64,7 +64,19 @@ jobs:
             -H "Accept: text/html" \
             "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
 
-      
+      - name: Remove empty RSS items (pre-clean)
+  run: |
+    python remove_empty_items.py --rss rss.xml --seen seen.json --dry-run --verbose || true
+    # Inspect dry-run output in logs for a few runs, then run for real:
+    python remove_empty_items.py --rss rss.xml --seen seen.json
+    git add rss.xml seen.json || true
+    if git diff --staged --quiet; then
+      echo "No empty items removed"
+    else
+      git commit -m "Remove empty RSS items (pre-clean)" || true
+      git push origin HEAD:main
+    fi
+
       - name: Run feed generator
         run: |
           python generate_feed.py
