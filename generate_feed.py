@@ -92,6 +92,25 @@ retries = Retry(
 session.mount("https://", HTTPAdapter(max_retries=retries))
 session.mount("http://", HTTPAdapter(max_retries=retries))
 
+MIME_BY_EXT = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+}
+
+def mime_for_url(url):
+    if not url:
+        return "image/jpeg"
+    u = url.lower().split("?")[0].split("#")[0]
+    for ext, m in MIME_BY_EXT.items():
+        if u.endswith(ext):
+            return m
+    return "image/jpeg"
+
+
 # --- helper fetch function (use everywhere instead of session.get directly) ---
 def fetch_url(url, timeout=12, allow_cloudscraper=True, debug=False):
     """Use requests session first, fallback to cloudscraper on failure."""
@@ -464,20 +483,15 @@ def find_latest_chapter(page_url, title=None, debug=False):
 
 def normalize_item(it, site=None, scraped_title=None):
     now = now_rfc2822()
-
-    # preserve an existing non-empty title
     title = (it.get("title") or "").strip()
     if not title:
         title = assemble_title(scraped_title, it.get("link", ""), site.get("title") if site else None)
 
-    # preserve an existing non-empty description
     description = it.get("description")
     if description is None:
         description = ""
 
-    # keep guid stable: prefer existing guid, else make one from link
     guid = it.get("guid") or make_guid(it.get("link", ""))
-
     return {
         "title": title,
         "link": it.get("link", ""),
@@ -486,6 +500,7 @@ def normalize_item(it, site=None, scraped_title=None):
         "description": description,
         "image": it.get("image", ""),
     }
+
 
 
 
@@ -501,6 +516,11 @@ def write_rss(channel_title, channel_link, channel_desc, items, out_file):
         f"    <description>{escape(channel_desc)}</description>\n"
         f"    <lastBuildDate>{now_rfc2822()}</lastBuildDate>\n"
     )
+
+    # optional channel-level image (use first item's image if present)
+    if items and items[0].get("image"):
+        header += f'    <image><url>{escape(items[0]["image"])}</url><title>{escape(channel_title)}</title><link>{escape(channel_link)}</link></image>\n'
+
     items_xml = ""
     for it in items:
         title_text = it.get('title') or ''
@@ -509,11 +529,17 @@ def write_rss(channel_title, channel_link, channel_desc, items, out_file):
         items_xml += f"      <link>{escape(it.get('link',''))}</link>\n"
         items_xml += f"      <guid isPermaLink=\"false\">{escape(it.get('guid',''))}</guid>\n"
         items_xml += f"      <pubDate>{escape(it.get('pubDate',''))}</pubDate>\n"
-        if it.get("image"):
-            items_xml += f"      <media:thumbnail url=\"{escape(it['image'])}\" />\n"
-            items_xml += f"      <enclosure url=\"{escape(it['image'])}\" type=\"image/jpeg\" />\n        "
+
+        img_url = it.get("image") or ""
+        if img_url:
+            img_type = mime_for_url(img_url)
+            items_xml += f'      <media:thumbnail url="{escape(img_url)}" />\n'
+            items_xml += f'      <media:content url="{escape(img_url)}" medium="image" type="{escape(img_type)}" />\n'
+            items_xml += f'      <enclosure url="{escape(img_url)}" type="{escape(img_type)}" />\n'
+
         items_xml += f"      <description><![CDATA[{it.get('description','')}]]></description>\n"
         items_xml += "    </item>\n"
+
     footer = "  </channel>\n</rss>\n"
 
     tmp = out_file + '.tmp'
@@ -525,6 +551,7 @@ def write_rss(channel_title, channel_link, channel_desc, items, out_file):
 
     # atomic replace
     os.replace(tmp, out_file)
+
 
 
 def main():
@@ -610,10 +637,36 @@ def main():
         }
         print("  New chapter detected:", chapter_url)
         history.insert(0, normalize_item(item, site=site, scraped_title=scraped_text))
-
+    
     history = [normalize_item(it) for it in history][:MAX_ITEMS]
-    seen["items"] = history
-    save_seen(seen)
+
+            # Backfill descriptions by canonical link (one-time migration to prefer non-empty descriptions)
+    by_link = {}
+    for it in history:
+        link = it.get("link", "") or ""
+        if not link:
+            continue
+        desc = (it.get("description") or "").strip()
+        # prefer an item that has a non-empty description
+        if link not in by_link or (desc and not (by_link[link].get("description") or "").strip()):
+            by_link[link] = it
+
+    # Apply backfill: copy the best description to other items with the same link
+    for it in history:
+        link = it.get("link", "") or ""
+        if not link:
+            continue
+        best = by_link.get(link)
+        if best:
+            best_desc = (best.get("description") or "").strip()
+            if best_desc and not (it.get("description") or "").strip():
+                it["description"] = best_desc
+
+
+        # Optionally re-run your dedupe/canonicalization after this
+        seen["items"] = [normalize_item(it) for it in seen.get("items", [])][:MAX_ITEMS]
+        save_seen(seen)
+
 
     # --- canonicalize GUIDs and dedupe history by chapter URL ---
     def is_chapter_only_title(t):
