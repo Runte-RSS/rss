@@ -99,15 +99,33 @@ jobs:
           echo "Restored backups because job failed"
 
 
-      - name: Remove empty RSS items (pre-clean, no push)
-        run: |
-          python remove_empty_items.py --rss rss.xml --seen seen.json --dry-run || true
-          python remove_empty_items.py --rss rss.xml --seen seen.json || true
-
-
       - name: Run feed generator
         run: |
           python generate_feed.py
+
+      - name: Backup feed files
+        run: |
+          cp rss.xml rss.xml.bak || true
+          cp seen.json seen.json.bak || true
+
+      - name: Install Python dependencies for filler
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Fill missing titles in rss.xml
+        run: |
+          # run the filler script; it should write rss.fixed.xml when it makes changes
+          python scripts/fill_titles.py --input rss.xml --output rss.fixed.xml || true
+
+          # if the script produced a fixed file, replace rss.xml atomically
+          if [ -f rss.fixed.xml ]; then
+            mv rss.fixed.xml rss.xml
+            echo "Applied title fixes to rss.xml"
+          else
+            echo "No title fixes applied"
+          fi
+
 
       - name: Show changed files
         run: |
@@ -116,16 +134,26 @@ jobs:
 
       - name: Commit and push feed changes
         run: |
-          # Only commit if there are changes
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add rss.xml seen.json || true
-            git commit -m "Auto-update rss.xml and seen.json (GitHub Actions)" || echo "No commit needed"
-            git push origin HEAD:main
-          else
-            echo "No changes to commit"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          # rebase to avoid creating merge conflicts on push
+          if ! git rebase origin/main; then
+            echo "Remote changed; aborting commit to avoid conflicts"
+            git rebase --abort || true
+            # restore backups so we don't leave broken files
+            if [ -f rss.xml.bak ]; then cp rss.xml.bak rss.xml; fi
+            if [ -f seen.json.bak ]; then cp seen.json.bak seen.json; fi
+            exit 1
           fi
+          git add rss.xml seen.json || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-update rss.xml and seen.json (GitHub Actions)"
+            git push --force-with-lease origin HEAD:main
+          fi
+
 
       - name: Commit and push feed changes (verbose)
         run: |
