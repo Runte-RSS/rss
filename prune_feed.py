@@ -155,7 +155,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--rss", required=True, help="Path to rss.xml")
     p.add_argument("--seen", required=True, help="Path to seen.json")
-    p.add_argument("--days", type=int, default=14, help="Max age in days")
+    p.add_argument("--days", type=float, default=14.0, help="Max age in days (can be fractional)")
     p.add_argument("--dry-run", action="store_true", help="Do not write changes")
     p.add_argument("--debug", action="store_true", help="Verbose logging")
     args = p.parse_args()
