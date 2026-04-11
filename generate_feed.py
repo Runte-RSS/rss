@@ -63,6 +63,10 @@ SITES = [
         "title": "Once an Assassin, Now a Royal Nanny",
         "url": "https://mangamirror.com/manga/133938-once-an-assassin-now-a-royal-nanny",
         "image": "https://luacomic.org/_next/image?url=https%3A%2F%2Fmedia.luacomic.org%2Ffile%2FV4IKlhs%2Fn0rqb4l7v0jlpsq2ueuic0z1.webp&w=640&q=75",
+    },{
+        "title": "I Was Possessed, but It Became a Ghost Story",
+        "url": "https://mangamirror.com/manga/131820-i-was-possessed-but-it-became-a-ghost-story",
+        "image": "https://fairyscans.com/wp-content/uploads/2026/03/xxlarge.webp",
     }
     # Example: add more sites below
     # {
