@@ -56,10 +56,6 @@ SITES = [
         "url": "https://mangamirror.com/manga/95801-the-billionaires-replacement-wife",
         "image": "https://us-a.tapas.io/sa/76/2546a686-8b25-4e18-bdb5-2306567d34da.jpg",
     },{
-        "title": "Black Killer Whale Baby",
-        "url": "https://mangamirror.com/manga/119653-black-killer-whale-baby",
-        "image": "https://cdn.novelupdates.com/images/2023/06/Black-Killer-Whale-Baby.jpg",
-    },{
         "title": "Nia Liston: The Merciless Maiden",
         "url": "https://mangamirror.com/manga/107322-nia-liston-the-merciless-maiden",
         "image": "https://cdn.anisearch.com/images/manga/cover/76/76700_600.webp",
