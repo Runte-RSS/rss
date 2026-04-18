@@ -2,8 +2,11 @@ name: Prune old RSS items weekly
 
 on:
   schedule:
-    - cron: '0 12 * * 6'   # Saturday 12:00 UTC
+    - cron: '0 12 * * 6'
   workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
   prune:
@@ -14,26 +17,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Ensure script is present
-        run: |
-          ls -la
-          python --version
-
-      - name: Dry run (optional, logs what would be removed)
-        run: |
-          python prune_feed.py --rss rss.xml --seen seen.json --days 14 --dry-run --debug
+      - name: Dry run
+        run: python prune_feed.py --rss rss.xml --seen seen.json --days 14 --dry-run --debug
 
       - name: Run prune
-        run: |
-          python prune_feed.py --rss rss.xml --seen seen.json --days 14 --debug
+        run: python prune_feed.py --rss rss.xml --seen seen.json --days 14 --debug
 
       - name: Commit changes if any
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "actions@github.com"
