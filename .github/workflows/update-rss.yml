@@ -1,27 +1,21 @@
 name: Update RSS Feed
 
 on:
-  push:
-    paths:
-      - 'generate_feed.py'
-      - 'requirements.txt'
-      - 'SITES*'
   schedule:
-    - cron: '0 * * * *' # hourly; adjust as needed
-  workflow_dispatch: {}
+    - cron: "0 18-23 * * 4"  # Thu 18:00–23:00
+    - cron: "0 0-23 * * 5"   # Fri all day
+    - cron: "0 0-6 * * 6"    # Sat 00:00–06:00
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  run-task:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-          fetch-depth: 0
+      - name: Do something
+        run: echo "Running inside the allowed window"
+
 
       - name: Set up Python
         uses: actions/setup-python@v4
