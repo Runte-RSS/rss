@@ -25,10 +25,10 @@ jobs:
           python-version: '3.11'
 
       - name: Dry run
-        run: python prune_feed.py --rss rss.xml --seen seen.json --days 14 --dry-run --debug
+        run: python prune_feed.py --rss rss.xml --seen seen.json --days 7 --dry-run --debug
 
       - name: Run prune
-        run: python prune_feed.py --rss rss.xml --seen seen.json --days 14 --debug
+        run: python prune_feed.py --rss rss.xml --seen seen.json --days 7 --debug
 
       - name: Commit changes if any
         env:
