@@ -3,7 +3,7 @@
 prune_feed.py
 
 Usage:
-  python prune_feed.py --rss rss.xml --seen seen.json --days 14 [--dry-run] [--debug]
+  python prune_feed.py --rss rss.xml --seen seen.json --days 7 [--dry-run] [--debug]
 
 Removes <item> entries from rss.xml older than --days only when that series
 has a newer item within the window. Also removes matching entries from seen.json.
