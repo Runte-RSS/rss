@@ -31,42 +31,6 @@ SITES = [
         "title": "One Piece",
         "url": "https://tcbonepiecechapters.com/mangas/5/one-piece",
         "image": "https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png",
-    },{
-        "title": "Shut Up, Evil Dragon! I don’t want to raise a child with you anymore",
-        "url": "https://mangamirror.com/manga/122851-shut-up-evil-dragon-i-dont-want-to-raise-a-child-with-you-anymore",
-        "image": "https://media.manhuabuddy.com/files/images/thumbs/shut-up-evil-dragon-i-dont-want-to-raise-a-child-with-you-anymore.webp",
-    },{
-        "title": "Transmigrating Into The Cyber Game After Being On Top For Killing Boss",
-        "url": "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss",
-        "image": "https://cdn.anime-planet.com/manga/primary/after-transmigrating-into-the-cyberpunk-game-i-defeated-the-boss-and-successfully-rose-to-the-top-1.webp?t=1759754015",
-    },{
-        "title": "I Played the Role of the Adopted Daughter Too Well",
-        "url": "https://mangamirror.com/manga/50583-i-played-the-role-of-the-adopted-daughter-too-well",
-        "image": "https://www.mangaread.org/wp-content/uploads/2023/09/28-1677642819-193x278.jpg",
-    },{
-        "title": "The Fox-Eyed Villain of the Demon Academy",
-        "url": "https://mangamirror.com/manga/127739-the-fox-eyed-villain-of-the-demon-academy",
-        "image": "https://static.asurascans.my/book/f47aadb5-8bff-4ba1-bece-66f0ec681c24/cover/b54fe4a9-a71f-400c-929a-2b1ef9b4c7dd.webp?width=400&type=webp",
-    },{
-        "title": "Revenge Of The Sword Clan's Hound",
-        "url": "https://mangamirror.com/manga/59511-revenge-of-the-sword-clans-hound",
-        "image": "https://bulbasaur.poke-black-and-white.net/covers/6851547b702284f834178357/cover_1752077533539.webp",
-    },{
-        "title": "The Billionaire’s Replacement Wife",
-        "url": "https://mangamirror.com/manga/95801-the-billionaires-replacement-wife",
-        "image": "https://us-a.tapas.io/sa/76/2546a686-8b25-4e18-bdb5-2306567d34da.jpg",
-    },{
-        "title": "Nia Liston: The Merciless Maiden",
-        "url": "https://mangamirror.com/manga/107322-nia-liston-the-merciless-maiden",
-        "image": "https://cdn.anisearch.com/images/manga/cover/76/76700_600.webp",
-    },{
-        "title": "Once an Assassin, Now a Royal Nanny",
-        "url": "https://mangamirror.com/manga/133938-once-an-assassin-now-a-royal-nanny",
-        "image": "https://luacomic.org/_next/image?url=https%3A%2F%2Fmedia.luacomic.org%2Ffile%2FV4IKlhs%2Fn0rqb4l7v0jlpsq2ueuic0z1.webp&w=640&q=75",
-    },{
-        "title": "The Rankers Guide to Live an Ordinary Life",
-        "url": "https://mangamirror.com/manga/108876-the-rankers-guide-to-live-an-ordinary-life",
-        "image": "https://nyraxmanga.com/wp-content/uploads/2025/08/the-rankers-guide-to-live-an-ordinary-life.jpg",
     }
     # Example: add more sites below
     # {
