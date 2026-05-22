@@ -48,32 +48,10 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
- 
-
-      - name: Remove empty RSS items (pre-clean, no push)
-        run: |
-          # dry-run first while you confirm behavior
-          python remove_empty_items.py --rss rss.xml --seen seen.json --dry-run
-          # then run for real
-          python remove_empty_items.py --rss rss.xml --seen seen.json
-
-      # later: restore backups if generator fails
-      - name: Restore backups on failure
-        if: ${{ failure() }}
-        run: |
-          if [ -f rss.xml.bak ]; then cp rss.xml.bak rss.xml; fi
-          if [ -f seen.json.bak ]; then cp seen.json.bak seen.json; fi
-          echo "Restored backups because job failed"
-
 
       - name: Run feed generator
         run: |
           python generate_feed.py
-
-      - name: Backup feed files
-        run: |
-          cp rss.xml rss.xml.bak || true
-          cp seen.json seen.json.bak || true
 
       - name: Install Python dependencies for filler
         run: |
