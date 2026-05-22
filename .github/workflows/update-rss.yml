@@ -1,6 +1,7 @@
 name: Update RSS Feed
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 18-23 * * 4"  # Thu 18:00–23:00
     - cron: "0 0-23 * * 5"   # Fri all day
