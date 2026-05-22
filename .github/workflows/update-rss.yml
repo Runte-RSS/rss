@@ -1,22 +1,29 @@
 name: Update RSS Feed
 
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - 'generate_feed.py'
+      - 'requirements.txt'
+      - 'SITES*'
   schedule:
     - cron: "0 18-23 * * 4"  # Thu 18:00–23:00
     - cron: "0 0-23 * * 5"   # Fri all day
     - cron: "0 0-6 * * 6"    # Sat 00:00–06:00
+  workflow_dispatch: {}
 
 permissions:
   contents: write
 
 jobs:
-  run-task:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Do something
-        run: echo "Running inside the allowed window"
-
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -49,9 +56,59 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - name: Debug remote access to mangamirror
+        run: |
+          echo "Runner public IP (for debugging):"
+          curl -sS https://ifconfig.me || true
+          echo
+          echo "HEAD request to a failing page (with browser UA):"
+          curl -I -L -sS -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
+            -H "Accept: text/html" \
+            "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
+
+      - name: Validate rss.xml before cleanup
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET, sys, shutil, os
+          try:
+              ET.parse('rss.xml')
+              print('rss.xml parse OK')
+          except Exception as e:
+              print('rss.xml parse failed:', e)
+              if os.path.exists('rss.xml.bak'):
+                  shutil.copy2('rss.xml.bak', 'rss.xml')
+                  print('Restored rss.xml from backup')
+              if os.path.exists('seen.json.bak'):
+                  shutil.copy2('seen.json.bak', 'seen.json')
+                  print('Restored seen.json from backup')
+              sys.exit(1)
+          PY
+ 
+
+      - name: Remove empty RSS items (pre-clean, no push)
+        run: |
+          # dry-run first while you confirm behavior
+          python remove_empty_items.py --rss rss.xml --seen seen.json --dry-run
+          # then run for real
+          python remove_empty_items.py --rss rss.xml --seen seen.json
+
+      # later: restore backups if generator fails
+      - name: Restore backups on failure
+        if: ${{ failure() }}
+        run: |
+          if [ -f rss.xml.bak ]; then cp rss.xml.bak rss.xml; fi
+          if [ -f seen.json.bak ]; then cp seen.json.bak seen.json; fi
+          echo "Restored backups because job failed"
+
+
       - name: Run feed generator
         run: |
           python generate_feed.py
+
+      - name: Backup feed files
+        run: |
+          cp rss.xml rss.xml.bak || true
+          cp seen.json seen.json.bak || true
 
       - name: Install Python dependencies for filler
         run: |
@@ -122,7 +179,4 @@ jobs:
             git ls-remote origin
             exit 1
           fi
-
-
-
 
