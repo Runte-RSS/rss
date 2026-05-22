@@ -47,16 +47,6 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-
-      - name: Debug remote access to mangamirror
-        run: |
-          echo "Runner public IP (for debugging):"
-          curl -sS https://ifconfig.me || true
-          echo
-          echo "HEAD request to a failing page (with browser UA):"
-          curl -I -L -sS -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
-            -H "Accept: text/html" \
-            "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
  
 
       - name: Remove empty RSS items (pre-clean, no push)
