@@ -57,24 +57,6 @@ jobs:
           curl -I -L -sS -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
             -H "Accept: text/html" \
             "https://mangamirror.com/manga/121372-transmigrating-into-the-cyber-game-after-being-on-top-for-killing-boss" || true
-
-      - name: Validate rss.xml before cleanup
-        run: |
-          python - <<'PY'
-          import xml.etree.ElementTree as ET, sys, shutil, os
-          try:
-              ET.parse('rss.xml')
-              print('rss.xml parse OK')
-          except Exception as e:
-              print('rss.xml parse failed:', e)
-              if os.path.exists('rss.xml.bak'):
-                  shutil.copy2('rss.xml.bak', 'rss.xml')
-                  print('Restored rss.xml from backup')
-              if os.path.exists('seen.json.bak'):
-                  shutil.copy2('seen.json.bak', 'seen.json')
-                  print('Restored seen.json from backup')
-              sys.exit(1)
-          PY
  
 
       - name: Remove empty RSS items (pre-clean, no push)
