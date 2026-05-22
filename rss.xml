@@ -4,8 +4,18 @@
     <title>My Manga Watchlist</title>
     <link>https://example.com/</link>
     <description>Auto-generated manga feed for Fluent Reader</description>
-    <lastBuildDate>Sun, 17 May 2026 18:53:02 +0000</lastBuildDate>
-    <image><url>https://nyraxmanga.com/wp-content/uploads/2025/08/the-rankers-guide-to-live-an-ordinary-life.jpg</url><title>My Manga Watchlist</title><link>https://example.com/</link></image>
+    <lastBuildDate>Fri, 22 May 2026 20:53:14 +0000</lastBuildDate>
+    <image><url>https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png</url><title>My Manga Watchlist</title><link>https://example.com/</link></image>
+    <item>
+      <title>One Piece Chapter 1183 Good Mor-Maid</title>
+      <link>https://tcbonepiecechapters.com/chapters/7984/one-piece-chapter-1183</link>
+      <guid isPermaLink="false">urn:sha1:3b472b94bad312540f78c02a54fadd35824f3a97</guid>
+      <pubDate>Fri, 22 May 2026 20:53:14 +0000</pubDate>
+      <media:thumbnail url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" />
+      <media:content url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" medium="image" type="image/png" />
+      <enclosure url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" type="image/png" />
+      <description><![CDATA[<a href="https://tcbonepiecechapters.com/chapters/7984/one-piece-chapter-1183"><img src="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" alt="One Piece" style="max-width:200px;height:auto;display:block;margin-bottom:8px;" /></a><div><a href="https://tcbonepiecechapters.com/mangas/5/one-piece">One Piece</a><br/>One Piece  Chapter 1183 Good Mor-Maid</div>]]></description>
+    </item>
     <item>
       <title>One Piece Chapter 1182 Zaza</title>
       <link>https://tcbonepiecechapters.com/chapters/7981/one-piece-chapter-1182</link>
@@ -16,6 +26,5 @@
       <enclosure url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" type="image/png" />
       <description><![CDATA[<a href="https://tcbonepiecechapters.com/chapters/7981/one-piece-chapter-1182"><img src="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" alt="One Piece" style="max-width:200px;height:auto;display:block;margin-bottom:8px;" /></a><div><a href="https://tcbonepiecechapters.com/mangas/5/one-piece">One Piece</a><br/>One Piece  Chapter 1182 Zaza</div>]]></description>
     </item>
- 
   </channel>
 </rss>
