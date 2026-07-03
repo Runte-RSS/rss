@@ -4,8 +4,18 @@
     <title>My Manga Watchlist</title>
     <link>https://example.com/</link>
     <description>Auto-generated manga feed for Fluent Reader</description>
-    <lastBuildDate>Fri, 03 Jul 2026 01:55:59 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 03 Jul 2026 05:45:22 +0000</lastBuildDate>
     <image><url>https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png</url><title>My Manga Watchlist</title><link>https://example.com/</link></image>
+    <item>
+      <title>One Piece Chapter 1187 The Cause</title>
+      <link>https://tcbonepiecechapters.com/chapters/7991/one-piece-chapter-1187</link>
+      <guid isPermaLink="false">urn:sha1:ccdb90020990f333bfaf8d2450b09e6b3c0580f0</guid>
+      <pubDate>Fri, 03 Jul 2026 05:45:22 +0000</pubDate>
+      <media:thumbnail url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" />
+      <media:content url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" medium="image" type="image/png" />
+      <enclosure url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" type="image/png" />
+      <description><![CDATA[<a href="https://tcbonepiecechapters.com/chapters/7991/one-piece-chapter-1187"><img src="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" alt="One Piece" style="max-width:200px;height:auto;display:block;margin-bottom:8px;" /></a><div><a href="https://tcbonepiecechapters.com/mangas/5/one-piece">One Piece</a><br/>One Piece  Chapter 1187 The Cause</div>]]></description>
+    </item>
     <item>
       <title>One Piece Chapter 1186 Once More</title>
       <link>https://tcbonepiecechapters.com/chapters/7989/one-piece-chapter-1186</link>
