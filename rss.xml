@@ -4,8 +4,18 @@
     <title>My Manga Watchlist</title>
     <link>https://example.com/</link>
     <description>Auto-generated manga feed for Fluent Reader</description>
-    <lastBuildDate>Fri, 10 Jul 2026 01:54:33 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 10 Jul 2026 05:54:48 +0000</lastBuildDate>
     <image><url>https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png</url><title>My Manga Watchlist</title><link>https://example.com/</link></image>
+    <item>
+      <title>One Piece Chapter 1188 Wailing Void</title>
+      <link>https://tcbonepiecechapters.com/chapters/7995/one-piece-chapter-1188</link>
+      <guid isPermaLink="false">urn:sha1:dc65aed777896b0ca83ce39aad5020851f56c90c</guid>
+      <pubDate>Fri, 10 Jul 2026 05:54:48 +0000</pubDate>
+      <media:thumbnail url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" />
+      <media:content url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" medium="image" type="image/png" />
+      <enclosure url="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" type="image/png" />
+      <description><![CDATA[<a href="https://tcbonepiecechapters.com/chapters/7995/one-piece-chapter-1188"><img src="https://cdn.onepiecechapters.com/file/CDN-M-A-N/Screen-Shot-2021-04-23-at-9.31.12-PM-1024x732v3.png" alt="One Piece" style="max-width:200px;height:auto;display:block;margin-bottom:8px;" /></a><div><a href="https://tcbonepiecechapters.com/mangas/5/one-piece">One Piece</a><br/>One Piece  Chapter 1188 Wailing Void</div>]]></description>
+    </item>
     <item>
       <title>One Piece Chapter 1187 The Cause</title>
       <link>https://tcbonepiecechapters.com/chapters/7991/one-piece-chapter-1187</link>
